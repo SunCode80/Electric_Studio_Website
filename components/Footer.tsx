@@ -18,7 +18,7 @@ export function Footer() {
               />
             </div>
             <p className="text-sm">
-              We focus on your digital presence so that you can focus on growing your business.
+              We focus on building your digital presence so that you can focus on building your business.
             </p>
           </div>
 
