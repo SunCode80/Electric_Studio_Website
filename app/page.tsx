@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { ChevronDown, Globe, Database, Video, Target } from 'lucide-react';
+import { ChevronDown, Globe, Database, Video, Target, Share2 } from 'lucide-react';
 import { Button } from '@/components/Button';
 import { StudioCard } from '@/components/StudioCard';
 import { Section } from '@/components/Section';
@@ -15,6 +15,21 @@ export default function Home() {
 
   const services = [
     {
+      icon: <Target className="w-12 h-12 text-purple-600" />,
+      title: 'Brand Strategy',
+      description: 'Know exactly who you are and how to communicate it',
+    },
+    {
+      icon: <Video className="w-12 h-12 text-purple-600" />,
+      title: 'Content Creation',
+      description: 'Professional video, photography, graphics, and writing',
+    },
+    {
+      icon: <Share2 className="w-12 h-12 text-purple-600" />,
+      title: 'Social Media Management',
+      description: 'Keep your brand seen where the eyes are',
+    },
+    {
       icon: <Globe className="w-12 h-12 text-purple-600" />,
       title: 'Website Development',
       description: 'Custom websites with domain, email, and hosting',
@@ -23,16 +38,6 @@ export default function Home() {
       icon: <Database className="w-12 h-12 text-purple-600" />,
       title: 'CRM & Lead Management',
       description: 'Never lose another customer with automated systems',
-    },
-    {
-      icon: <Video className="w-12 h-12 text-purple-600" />,
-      title: 'Content Creation',
-      description: 'Professional video, photography, graphics, and writing',
-    },
-    {
-      icon: <Target className="w-12 h-12 text-purple-600" />,
-      title: 'Brand Strategy',
-      description: 'Know exactly who you are and how to communicate it',
     },
   ];
 
@@ -116,7 +121,7 @@ export default function Home() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
           {services.map((service, index) => (
             <StudioCard key={index} hover>
               <div className="mb-4">{service.icon}</div>
