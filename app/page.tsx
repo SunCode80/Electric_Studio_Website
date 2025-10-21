@@ -133,27 +133,62 @@ export default function Home() {
         </div>
       </Section>
 
-      <Section gradient id="survey">
-        <div className="text-center mb-12">
-          <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
-            Get Your Custom Content Strategy
-          </h2>
-          <p className="text-xl text-slate-200 mb-4 max-w-2xl mx-auto">
-            Answer 10 quick questions and receive a personalized strategy in 48 hours
-          </p>
-          <div className="text-purple-300 flex items-center justify-center gap-2">
-            <span>⏱️</span>
-            <span>Takes just 3 minutes</span>
+      <section id="survey" className="py-20 bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-5xl font-bold text-white mb-6">
+              Get Your Custom Content Strategy
+            </h2>
+            <p className="text-xl text-slate-200 mb-4">
+              Answer 10 quick questions and receive a personalized strategy in 48 hours
+            </p>
+            <div className="flex items-center justify-center gap-2 text-purple-300">
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+              </svg>
+              <span>Takes just 3 minutes</span>
+            </div>
+          </div>
+
+          <div className="max-w-3xl mx-auto bg-white rounded-2xl shadow-2xl p-12 text-center">
+            <div className="text-6xl mb-6">📋</div>
+            <h3 className="text-3xl font-bold text-slate-900 mb-4">
+              Ready to Get Started?
+            </h3>
+            <p className="text-lg text-slate-600 mb-8">
+              Click below to open your personalized Content Strategy Survey
+            </p>
+
+            <a
+              href="https://content-strategy-survey-sefmorris.replit.app"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block bg-purple-600 hover:bg-purple-700 text-white px-12 py-6 rounded-xl font-bold text-xl transition-all duration-300 hover:transform hover:scale-105 hover:shadow-lg hover:shadow-purple-500/50"
+            >
+              Start Your Content Strategy Survey →
+            </a>
+
+            <div className="mt-8 grid grid-cols-3 gap-4 max-w-md mx-auto">
+              <div className="text-center">
+                <div className="text-purple-600 font-bold text-2xl">3</div>
+                <div className="text-slate-600 text-sm">Minutes</div>
+              </div>
+              <div className="text-center">
+                <div className="text-purple-600 font-bold text-2xl">10</div>
+                <div className="text-slate-600 text-sm">Questions</div>
+              </div>
+              <div className="text-center">
+                <div className="text-purple-600 font-bold text-2xl">48hr</div>
+                <div className="text-slate-600 text-sm">Response</div>
+              </div>
+            </div>
+
+            <p className="text-sm text-slate-500 mt-6">
+              🔒 Your information is secure and never shared
+            </p>
           </div>
         </div>
-
-        <div className="max-w-5xl mx-auto">
-          <SurveyEmbed />
-          <p className="text-slate-300 text-sm text-center mt-6">
-            🔒 Your information is secure and never shared
-          </p>
-        </div>
-      </Section>
+      </section>
 
       <Section>
         <div className="text-center mb-16">
