@@ -87,9 +87,6 @@ export default function Home() {
             <Button variant="primary" onClick={scrollToSurvey}>
               Start Your Content Strategy
             </Button>
-            <Button variant="secondary" href="#services">
-              Watch Our Work
-            </Button>
           </div>
         </div>
 
