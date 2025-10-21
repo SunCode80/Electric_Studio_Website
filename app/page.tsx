@@ -211,19 +211,6 @@ export default function Home() {
         </div>
       </Section>
 
-      <Section className="bg-slate-50">
-        <div className="max-w-3xl mx-auto text-center">
-          <h2 className="text-4xl md:text-5xl font-bold text-slate-900 mb-6">
-            Ready to Transform Your Digital Presence?
-          </h2>
-          <p className="text-xl text-slate-600 mb-8">
-            Start with our 3-minute Content Strategy Survey and get your customized approach within 48 hours
-          </p>
-          <Button variant="primary" onClick={scrollToSurvey}>
-            Get Your Custom Strategy
-          </Button>
-        </div>
-      </Section>
     </>
   );
 }
