@@ -18,7 +18,7 @@ export function Footer() {
               />
             </div>
             <p className="text-sm">
-              Professional digital solutions with 20+ years of network television experience.
+              We focus on your digital presence so that you can focus on growing your business.
             </p>
           </div>
 
