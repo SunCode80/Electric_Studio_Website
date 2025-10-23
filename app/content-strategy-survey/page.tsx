@@ -30,30 +30,30 @@ const surveySchema = z.object({
   phone: z.string().optional(),
   company_name: z.string().min(2, 'Company name is required'),
   website_url: z.string().optional(),
-  
+
   // Business Information
   industry: z.string().min(1, 'Please select an industry'),
   business_description: z.string().min(20, 'Please provide at least 20 characters'),
   target_audience: z.string().min(10, 'Please describe your target audience'),
   unique_value: z.string().min(10, 'Please describe your unique value'),
-  
+
   // Current Situation
   biggest_challenge: z.string().min(10, 'Please describe your biggest challenge'),
   current_marketing: z.array(z.string()).min(1, 'Select at least one option'),
   current_content_frequency: z.string().min(1, 'Please select a frequency'),
   monthly_marketing_budget: z.string().min(1, 'Please select a budget range'),
-  
+
   // Goals & Objectives
   primary_goal: z.string().min(10, 'Please describe your primary goal'),
   success_metric: z.string().min(10, 'Please describe how you measure success'),
   timeline: z.string().min(1, 'Please select a timeline'),
-  
+
   // Content Preferences
   interested_services: z.array(z.string()).min(1, 'Select at least one service'),
   preferred_content_types: z.array(z.string()).min(1, 'Select at least one content type'),
   tone_preference: z.string().min(1, 'Please select a tone'),
   competitor_examples: z.string().optional(),
-  
+
   // Additional Information
   existing_assets: z.array(z.string()),
   additional_info: z.string().optional(),
@@ -92,15 +92,15 @@ export default function ContentStrategySurveyPage() {
         .from('content_strategy_submissions')
         .insert([data])
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
 
       setIsSubmitted(true);
       toast.success('Survey submitted successfully!');
-      
+
       // TODO: Trigger email notification here when you have email set up
-      
+
     } catch (error) {
       console.error('Error submitting survey:', error);
       toast.error('Failed to submit survey. Please try again.');
@@ -134,7 +134,7 @@ export default function ContentStrategySurveyPage() {
 
   if (isSubmitted) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center p-4">
         <div className="max-w-2xl w-full bg-white rounded-3xl shadow-2xl p-12 text-center">
           <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
             <svg
@@ -188,11 +188,11 @@ export default function ContentStrategySurveyPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-12 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 py-12 px-4">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center mb-12">
-          <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
             Content Strategy Survey
           </h1>
           <p className="text-xl text-gray-600">
@@ -221,7 +221,7 @@ export default function ContentStrategySurveyPage() {
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2">
             <div
-              className="bg-gradient-to-r from-blue-600 to-purple-600 h-2 rounded-full transition-all duration-300"
+              className="bg-gradient-to-r from-blue-600 to-cyan-600 h-2 rounded-full transition-all duration-300"
               style={{ width: `${((currentSection + 1) / sections.length) * 100}%` }}
             />
           </div>
@@ -232,12 +232,12 @@ export default function ContentStrategySurveyPage() {
 
         {/* Form */}
         <form onSubmit={handleSubmit(onSubmit)} className="bg-white rounded-3xl shadow-2xl p-8">
-          
+
           {/* SECTION 0: Contact Information */}
           {currentSection === 0 && (
             <div className="space-y-6">
               <h2 className="text-2xl font-bold mb-6">Contact Information</h2>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <Label htmlFor="first_name">First Name *</Label>
