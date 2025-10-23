@@ -1,17 +1,13 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import { ChevronDown, Globe, Database, Video, Target, Share2 } from 'lucide-react';
 import { Button } from '@/components/Button';
 import { StudioCard } from '@/components/StudioCard';
 import { Section } from '@/components/Section';
-import { SurveyEmbed } from '@/components/SurveyEmbed';
 
 export default function Home() {
-  const scrollToSurvey = () => {
-    const surveySection = document.getElementById('survey');
-    surveySection?.scrollIntoView({ behavior: 'smooth' });
-  };
 
   const services = [
     {
@@ -89,9 +85,11 @@ export default function Home() {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button variant="primary" onClick={scrollToSurvey}>
-              Start Your Content Strategy
-            </Button>
+            <Link href="/content-strategy-survey">
+              <Button variant="primary">
+                Start Your Content Strategy
+              </Button>
+            </Link>
           </div>
         </div>
 
@@ -161,14 +159,12 @@ export default function Home() {
               Click below to open your personalized Content Strategy Survey
             </p>
 
-            <a
-              href="https://content-strategy-survey-sefmorris.replit.app"
-              target="_blank"
-              rel="noopener noreferrer"
+            <Link
+              href="/content-strategy-survey"
               className="inline-block bg-purple-600 hover:bg-purple-700 text-white px-12 py-6 rounded-xl font-bold text-xl transition-all duration-300 hover:transform hover:scale-105 hover:shadow-lg hover:shadow-purple-500/50"
             >
               Start Your Content Strategy Survey →
-            </a>
+            </Link>
 
             <div className="mt-8 grid grid-cols-3 gap-4 max-w-md mx-auto">
               <div className="text-center">
@@ -210,9 +206,11 @@ export default function Home() {
         </div>
 
         <div className="text-center mt-12">
-          <Button variant="primary" onClick={scrollToSurvey}>
-            Start Content Strategy →
-          </Button>
+          <Link href="/content-strategy-survey">
+            <Button variant="primary">
+              Start Content Strategy →
+            </Button>
+          </Link>
         </div>
       </Section>
 
