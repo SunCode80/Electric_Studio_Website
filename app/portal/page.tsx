@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -41,6 +42,7 @@ interface Submission {
 }
 
 export default function AdminDashboardPage() {
+  const router = useRouter();
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [filteredSubmissions, setFilteredSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
@@ -115,6 +117,16 @@ export default function AdminDashboardPage() {
         {labels[status] || status}
       </Badge>
     );
+  };
+
+  const handleRowClick = (submissionId: string, e: React.MouseEvent) => {
+    if (
+      (e.target as HTMLElement).closest('button') ||
+      (e.target as HTMLElement).closest('a')
+    ) {
+      return;
+    }
+    router.push(`/portal/clients/${submissionId}`);
   };
 
   const exportToCSV = () => {
@@ -256,7 +268,11 @@ export default function AdminDashboardPage() {
                 </TableRow>
               ) : (
                 filteredSubmissions.map((submission) => (
-                  <TableRow key={submission.id}>
+                  <TableRow
+                    key={submission.id}
+                    onClick={(e) => handleRowClick(submission.id, e)}
+                    className="cursor-pointer hover:bg-gray-50 transition-colors"
+                  >
                     <TableCell className="text-sm text-gray-600">
                       {formatDistanceToNow(new Date(submission.created_at), {
                         addSuffix: true,
