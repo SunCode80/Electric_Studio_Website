@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Breadcrumbs } from '@/components/portal/Breadcrumbs';
 import { toast } from 'sonner';
 import { Settings as SettingsIcon, Save } from 'lucide-react';
 
@@ -124,6 +125,12 @@ export default function SettingsPage() {
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-4xl mx-auto">
+        <Breadcrumbs
+          items={[
+            { label: 'Dashboard', href: '/portal' },
+            { label: 'Settings' },
+          ]}
+        />
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
             <SettingsIcon className="w-8 h-8 text-gray-700" />

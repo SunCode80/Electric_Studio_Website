@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Breadcrumbs } from '@/components/portal/Breadcrumbs';
 import { toast } from 'sonner';
 import { ArrowLeft, Building2, Mail, Phone, Calendar, DollarSign } from 'lucide-react';
 import Link from 'next/link';
@@ -49,6 +50,7 @@ export default function ClientDashboardPage() {
   const [client, setClient] = useState<ClientSubmission | null>(null);
   const [loading, setLoading] = useState(true);
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
     fetchClientData();
@@ -145,17 +147,27 @@ export default function ClientDashboardPage() {
     );
   }
 
+  const getTabLabel = (tab: string) => {
+    const labels: { [key: string]: string } = {
+      overview: 'Overview',
+      messages: 'Messages',
+      files: 'Files',
+      projects: 'Projects',
+      meetings: 'Meetings',
+    };
+    return labels[tab] || tab;
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-7xl mx-auto">
-        <div className="mb-6">
-          <Link href="/portal">
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Dashboard
-            </Button>
-          </Link>
-        </div>
+        <Breadcrumbs
+          items={[
+            { label: 'Dashboard', href: '/portal' },
+            { label: `${client.first_name} ${client.last_name}`, href: `/portal/clients/${clientId}` },
+            ...(activeTab !== 'overview' ? [{ label: getTabLabel(activeTab) }] : []),
+          ]}
+        />
 
         <div className="mb-8">
           <div className="flex items-start justify-between">
@@ -191,7 +203,7 @@ export default function ClientDashboardPage() {
           </div>
         </div>
 
-        <Tabs defaultValue="overview" className="w-full">
+        <Tabs defaultValue="overview" className="w-full" onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-5 mb-8">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="messages">Messages</TabsTrigger>
