@@ -37,6 +37,7 @@ interface Submission {
   presentation_generated: boolean;
   interested_services: string[];
   monthly_marketing_budget: string;
+  unread_count?: number;
 }
 
 export default function AdminDashboardPage() {
@@ -241,6 +242,7 @@ export default function AdminDashboardPage() {
                 <TableHead>Industry</TableHead>
                 <TableHead>Budget</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Unread</TableHead>
                 <TableHead>Presentation</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -248,7 +250,7 @@ export default function AdminDashboardPage() {
             <TableBody>
               {filteredSubmissions.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                  <TableCell colSpan={9} className="text-center py-8 text-gray-500">
                     No submissions found
                   </TableCell>
                 </TableRow>
@@ -274,6 +276,15 @@ export default function AdminDashboardPage() {
                       {submission.monthly_marketing_budget}
                     </TableCell>
                     <TableCell>{getStatusBadge(submission.status)}</TableCell>
+                    <TableCell>
+                      {submission.unread_count && submission.unread_count > 0 ? (
+                        <Badge variant="destructive">
+                          {submission.unread_count}
+                        </Badge>
+                      ) : (
+                        <span className="text-gray-400">—</span>
+                      )}
+                    </TableCell>
                     <TableCell>
                       {submission.presentation_generated ? (
                         <Badge variant="default" className="bg-green-600">
