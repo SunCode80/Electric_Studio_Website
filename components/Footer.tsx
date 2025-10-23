@@ -82,6 +82,12 @@ export function Footer() {
 
         <div className="border-t border-slate-800 mt-12 pt-8 text-sm text-center">
           <p>&copy; {new Date().getFullYear()} Electric Studio. All rights reserved.</p>
+          <Link
+            href="/portal"
+            className="inline-block mt-2 text-slate-700 hover:text-slate-500 transition-colors text-xs"
+          >
+            Admin
+          </Link>
         </div>
       </div>
     </footer>
