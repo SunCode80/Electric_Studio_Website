@@ -10,6 +10,7 @@ import {
   Folder,
   Briefcase,
   Calendar,
+  Settings,
   LogOut
 } from 'lucide-react';
 
@@ -27,6 +28,7 @@ export function Sidebar({ user }: SidebarProps) {
     { name: 'Files', href: '/portal/files', icon: Folder },
     { name: 'Projects', href: '/portal/projects', icon: Briefcase },
     { name: 'Meetings', href: '/portal/meetings', icon: Calendar },
+    { name: 'Settings', href: '/portal/settings', icon: Settings },
   ];
 
   async function handleSignOut() {
