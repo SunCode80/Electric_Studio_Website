@@ -53,7 +53,55 @@ export default function PipelinePage() {
     }
   };
 
-  const generateStage = async (stage: 'S2' | 'S3' | 'S4') => {
+  const generateS2 = async () => {
+    if (!submissionId) {
+      alert('Please enter a submission ID first');
+      return;
+    }
+
+    setStages((prev) => ({
+      ...prev,
+      S2: { ...prev.S2, status: 'processing', error: undefined, progress: 0 },
+    }));
+
+    try {
+      const response = await fetch('/api/generate/s2', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ s1Data: stages.S1.data }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Generation failed');
+      }
+
+      const result = await response.json();
+
+      if (!result.success || !result.output) {
+        throw new Error('Invalid response from API');
+      }
+
+      setStages((prev) => ({
+        ...prev,
+        S2: { status: 'completed', data: result.output, progress: 100 },
+      }));
+
+      await supabase
+        .from('content_strategy_submissions')
+        .update({ s2_presentation_data: result.output })
+        .eq('id', submissionId);
+
+    } catch (error: any) {
+      console.error('Error generating S2:', error);
+      setStages((prev) => ({
+        ...prev,
+        S2: { ...prev.S2, status: 'error', error: error.message },
+      }));
+    }
+  };
+
+  const generateStreamingStage = async (stage: 'S3' | 'S4') => {
     if (!submissionId) {
       alert('Please enter a submission ID first');
       return;
@@ -65,15 +113,7 @@ export default function PipelinePage() {
     }));
 
     try {
-      const payload: any = {};
-
-      if (stage === 'S2') {
-        payload.s1Data = stages.S1.data;
-      } else if (stage === 'S3') {
-        payload.s2Data = stages.S2.data;
-      } else if (stage === 'S4') {
-        payload.s3Data = stages.S3.data;
-      }
+      const payload = stage === 'S3' ? { s2Data: stages.S2.data } : { s3Data: stages.S3.data };
 
       const response = await fetch(`/api/generate/${stage.toLowerCase()}`, {
         method: 'POST',
@@ -106,7 +146,7 @@ export default function PipelinePage() {
           [stage]: {
             ...prev[stage],
             data: accumulatedText,
-            progress: Math.min(prev[stage].progress || 0 + 10, 90),
+            progress: Math.min((prev[stage].progress || 0) + 5, 90),
           },
         }));
       }
@@ -116,11 +156,7 @@ export default function PipelinePage() {
         [stage]: { status: 'completed', data: accumulatedText, progress: 100 },
       }));
 
-      const updateField = `${stage.toLowerCase()}_${
-        stage === 'S2' ? 'presentation' :
-        stage === 'S3' ? 'video_production' :
-        'assembly'
-      }_data`;
+      const updateField = stage === 'S3' ? 's3_video_production_data' : 's4_assembly_data';
 
       await supabase
         .from('content_strategy_submissions')
@@ -222,7 +258,7 @@ export default function PipelinePage() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Production Pipeline</h1>
         <p className="mt-2 text-gray-600">
-          S1 → S2 → S3 → S4 → S5 content generation pipeline with streaming
+          S1 → S2 → S3 → S4 → S5 content generation pipeline
         </p>
       </div>
 
@@ -275,33 +311,24 @@ export default function PipelinePage() {
                       }</CardTitle>
                       <CardDescription className="mt-1">
                         {stage === 'S1' ? 'Client survey responses' :
-                         stage === 'S2' ? 'Strategic video presentation script' :
-                         stage === 'S3' ? 'Complete asset list with AI prompts' :
-                         stage === 'S4' ? 'Step-by-step assembly guide' :
+                         stage === 'S2' ? 'Strategic video presentation (JSON response)' :
+                         stage === 'S3' ? 'Complete asset list with AI prompts (streaming)' :
+                         stage === 'S4' ? 'Step-by-step assembly guide (streaming)' :
                          'Combined S3 + S4 as PDF (client-side)'}
                       </CardDescription>
                     </div>
                   </div>
                   <div className="flex items-center space-x-3">
                     {getStatusBadge(stageInfo.status)}
-                    {stage !== 'S1' && stage !== 'S5' && (
-                      <Button
-                        onClick={() => generateStage(stage as any)}
-                        disabled={!canGenerate || stageInfo.status === 'processing'}
-                        size="sm"
-                      >
-                        {stageInfo.status === 'processing' ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <Play className="w-4 h-4" />
-                        )}
-                        <span className="ml-2">Generate</span>
-                      </Button>
-                    )}
-                    {stage === 'S5' && (
+                    {stage !== 'S1' && (
                       <>
                         <Button
-                          onClick={handleGenerateS5PDF}
+                          onClick={
+                            stage === 'S2' ? generateS2 :
+                            stage === 'S3' ? () => generateStreamingStage('S3') :
+                            stage === 'S4' ? () => generateStreamingStage('S4') :
+                            handleGenerateS5PDF
+                          }
                           disabled={!canGenerate || stageInfo.status === 'processing'}
                           size="sm"
                         >
@@ -310,9 +337,9 @@ export default function PipelinePage() {
                           ) : (
                             <Play className="w-4 h-4" />
                           )}
-                          <span className="ml-2">Generate PDF</span>
+                          <span className="ml-2">{stage === 'S5' ? 'Generate PDF' : 'Generate'}</span>
                         </Button>
-                        {stageInfo.status === 'completed' && pdfBlob && (
+                        {stage === 'S5' && stageInfo.status === 'completed' && pdfBlob && (
                           <Button
                             onClick={downloadS5PDF}
                             variant="outline"

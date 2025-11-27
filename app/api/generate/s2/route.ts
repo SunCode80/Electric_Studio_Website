@@ -1,134 +1,116 @@
 /**
  * API Route: /api/generate/s2
  * Generates S2 Presentation from S1 Survey Data
- * Uses streaming for real-time output
+ * 
+ * Uses standard request/response (not streaming) since S2 is typically fast.
+ * Includes retry logic for API overload errors.
  */
 
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import Anthropic from '@anthropic-ai/sdk';
 import { buildS2Prompt, CLAUDE_MODEL, TOKEN_LIMITS } from '@/lib/prompts';
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 
+// Retry with exponential backoff
+async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  maxRetries: number = 3,
+  initialDelay: number = 2000
+): Promise<T> {
+  let lastError: Error | unknown;
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error: unknown) {
+      lastError = error;
+      
+      const errorObj = error as { error?: { type?: string } };
+      if (errorObj?.error?.type === 'overloaded_error') {
+        const delay = initialDelay * Math.pow(2, attempt);
+        console.log(`API overloaded. Retrying in ${delay / 1000}s... (Attempt ${attempt + 1}/${maxRetries})`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+      
+      throw error;
+    }
+  }
+  
+  throw lastError;
+}
+
 export async function POST(request: NextRequest) {
   try {
+    // Validate API key
     if (!ANTHROPIC_API_KEY) {
-      return new Response(
-        JSON.stringify({ error: 'ANTHROPIC_API_KEY not configured' }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      return NextResponse.json(
+        { error: 'ANTHROPIC_API_KEY not configured' },
+        { status: 500 }
       );
     }
-
+    
+    // Parse request body
     const body = await request.json();
     const { s1Data } = body;
-
+    
     if (!s1Data) {
-      return new Response(
-        JSON.stringify({ error: 'S1 data is required' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      return NextResponse.json(
+        { error: 'S1 data is required' },
+        { status: 400 }
       );
     }
-
+    
+    // Initialize Anthropic client
+    const anthropic = new Anthropic({
+      apiKey: ANTHROPIC_API_KEY,
+    });
+    
+    // Build prompt
     const prompt = buildS2Prompt(
       typeof s1Data === 'string' ? s1Data : JSON.stringify(s1Data, null, 2)
     );
-
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
+    
+    // Generate S2 with retry logic
+    const response = await retryWithBackoff(async () => {
+      return anthropic.messages.create({
         model: CLAUDE_MODEL,
         max_tokens: TOKEN_LIMITS.s2,
-        stream: true,
         messages: [{
           role: 'user',
           content: prompt
         }]
-      }),
-    });
-
-    if (!response.ok) {
-      const error = await response.text();
-      console.error('Anthropic API error:', error);
-      return new Response(
-        JSON.stringify({ error: 'Failed to generate S2 presentation' }),
-        { status: response.status, headers: { 'Content-Type': 'application/json' } }
+      });
+    }, 3, 2000);
+    
+    // Extract text content
+    const textContent = response.content.find(block => block.type === 'text');
+    
+    if (!textContent || textContent.type !== 'text') {
+      return NextResponse.json(
+        { error: 'No text content in response' },
+        { status: 500 }
       );
     }
-
-    if (!response.body) {
-      return new Response(
-        JSON.stringify({ error: 'No response body from API' }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const encoder = new TextEncoder();
-    const decoder = new TextDecoder();
-
-    const readableStream = new ReadableStream({
-      async start(controller) {
-        try {
-          const reader = response.body!.getReader();
-
-          while (true) {
-            const { done, value } = await reader.read();
-
-            if (done) {
-              controller.close();
-              break;
-            }
-
-            const chunk = decoder.decode(value);
-            const lines = chunk.split('\n');
-
-            for (const line of lines) {
-              if (line.startsWith('data: ')) {
-                const data = line.slice(6);
-
-                if (data === '[DONE]') continue;
-
-                try {
-                  const parsed = JSON.parse(data);
-
-                  if (parsed.type === 'content_block_delta' &&
-                      parsed.delta?.type === 'text_delta') {
-                    controller.enqueue(encoder.encode(parsed.delta.text));
-                  }
-                } catch (e) {
-                  // Ignore parse errors for incomplete chunks
-                }
-              }
-            }
-          }
-        } catch (error) {
-          console.error('Stream error:', error);
-          controller.error(error);
-        }
-      }
+    
+    return NextResponse.json({
+      success: true,
+      output: textContent.text,
+      usage: response.usage,
     });
-
-    return new Response(readableStream, {
-      headers: {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-      },
-    });
-
+    
   } catch (error) {
     console.error('S2 generation error:', error);
-    return new Response(
-      JSON.stringify({
-        error: 'S2 generation failed',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    return NextResponse.json(
+      { 
+        error: 'S2 generation failed', 
+        details: error instanceof Error ? error.message : 'Unknown error' 
+      },
+      { status: 500 }
     );
   }
 }
 
-export const maxDuration = 90;
+// Allow up to 60 seconds for S2 generation
+export const maxDuration = 60;
