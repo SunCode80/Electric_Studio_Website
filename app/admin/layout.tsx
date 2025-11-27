@@ -3,7 +3,7 @@
 import { ReactNode, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { Home, FileText, LogOut } from 'lucide-react';
+import { Home, FileText, LogOut, BarChart } from 'lucide-react';
 import { isAdminAuthenticated, logoutAdmin } from '@/lib/admin/auth';
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
@@ -54,6 +54,13 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                 >
                   <FileText className="w-4 h-4 mr-2" />
                   Pipeline
+                </Link>
+                <Link
+                  href="/admin/submissions"
+                  className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+                >
+                  <BarChart className="w-4 h-4 mr-2" />
+                  Submissions
                 </Link>
               </div>
             </div>
