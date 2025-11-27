@@ -1,7 +1,7 @@
 // Claude API Prompts for Electric Studio Pipeline
 // These are the production prompts from the working Cursor admin portal
 
-import { S1SurveyData, S2PresentationData, S3VideoProductionData } from '@/lib/types/pipeline';
+import { S1SurveyData, S2PresentationData, S3VideoProductionData, S4AssemblyData } from '@/lib/types/pipeline';
 
 export const S2_SYSTEM_PROMPT = `You are a senior brand strategist and content consultant at Electric Studio, a premium digital agency with 20+ years of experience in television production, photography, videography, and graphic design.
 
