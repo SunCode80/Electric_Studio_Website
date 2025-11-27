@@ -1,8 +1,34 @@
-import { ReactNode } from 'react';
+'use client';
+
+import { ReactNode, useEffect } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { Home, FileText, Settings } from 'lucide-react';
+import { Home, FileText, LogOut } from 'lucide-react';
+import { isAdminAuthenticated, logoutAdmin } from '@/lib/admin/auth';
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
+  const router = useRouter();
+  const pathname = usePathname();
+
+  useEffect(() => {
+    if (pathname !== '/admin/login' && !isAdminAuthenticated()) {
+      router.push('/admin/login');
+    }
+  }, [pathname, router]);
+
+  const handleLogout = () => {
+    logoutAdmin();
+    router.push('/admin/login');
+  };
+
+  if (pathname === '/admin/login') {
+    return <>{children}</>;
+  }
+
+  if (!isAdminAuthenticated()) {
+    return null;
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <nav className="bg-white border-b border-gray-200">
@@ -31,13 +57,20 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                 </Link>
               </div>
             </div>
-            <div className="flex items-center">
+            <div className="flex items-center space-x-4">
               <Link
-                href="/portal"
+                href="/"
                 className="text-gray-500 hover:text-gray-700 text-sm font-medium"
               >
-                Back to Portal
+                Main Site
               </Link>
+              <button
+                onClick={handleLogout}
+                className="text-gray-500 hover:text-gray-700 text-sm font-medium inline-flex items-center"
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Logout
+              </button>
             </div>
           </div>
         </div>
