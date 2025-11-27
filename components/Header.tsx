@@ -5,9 +5,11 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Menu, X } from 'lucide-react';
 import { Button } from './Button';
+import { useAuth } from '@/lib/contexts/AuthContext';
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { isAdmin, loading } = useAuth();
 
   const navLinks = [
     { href: '/', label: 'Home' },
@@ -17,6 +19,8 @@ export function Header() {
     { href: '/portal', label: 'Client Portal' },
     { href: '/admin', label: 'Admin', adminOnly: true },
   ];
+
+  const visibleLinks = navLinks.filter(link => !link.adminOnly || (link.adminOnly && isAdmin));
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-lg border-b border-slate-200">
@@ -34,7 +38,7 @@ export function Header() {
           </Link>
 
           <nav className="hidden md:flex items-center gap-8">
-            {navLinks.map((link) => (
+            {visibleLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
@@ -65,7 +69,7 @@ export function Header() {
       {mobileMenuOpen && (
         <div className="md:hidden bg-white border-t border-slate-200">
           <nav className="flex flex-col p-4 space-y-4">
-            {navLinks.map((link) => (
+            {visibleLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
