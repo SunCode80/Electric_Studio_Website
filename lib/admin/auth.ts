@@ -19,7 +19,12 @@ export async function loginAdmin(email: string, password: string): Promise<{ suc
       .eq('is_active', true)
       .maybeSingle();
 
-    if (error || !admin) {
+    if (error) {
+      console.error('Login error:', error);
+      return { success: false, error: `Database error: ${error.message}` };
+    }
+
+    if (!admin) {
       return { success: false, error: 'Invalid email or password' };
     }
 

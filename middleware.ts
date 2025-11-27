@@ -6,7 +6,7 @@ export async function middleware(req: NextRequest) {
   const res = NextResponse.next();
   const pathname = req.nextUrl.pathname;
 
-  if (pathname.startsWith('/admin')) {
+  if (pathname.startsWith('/portal') && pathname !== '/portal/login') {
     try {
       const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -43,13 +43,6 @@ export async function middleware(req: NextRequest) {
         redirectUrl.searchParams.set('redirect', pathname);
         return NextResponse.redirect(redirectUrl);
       }
-
-      const { data: isAdminUser, error } = await supabase
-        .rpc('is_admin', { user_id: session.user.id });
-
-      if (error || !isAdminUser) {
-        return NextResponse.redirect(new URL('/portal', req.url));
-      }
     } catch (error) {
       console.error('Middleware error:', error);
       return NextResponse.redirect(new URL('/login', req.url));
@@ -60,5 +53,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*'],
+  matcher: ['/portal/:path*'],
 };
