@@ -15,6 +15,7 @@ export function Header() {
     { href: '/about', label: 'About' },
     { href: '/contact', label: 'Contact' },
     { href: '/portal', label: 'Client Portal' },
+    { href: '/admin', label: 'Admin', adminOnly: true },
   ];
 
   return (
