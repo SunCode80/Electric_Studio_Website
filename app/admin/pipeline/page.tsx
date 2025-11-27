@@ -4,9 +4,9 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, CheckCircle, AlertCircle, Play } from 'lucide-react';
+import { Loader2, CheckCircle, AlertCircle, Play, Download } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
+import { generateS5PDF, downloadPDFBlob, extractBusinessName } from '@/lib/pdfGenerator';
 
 type PipelineStage = 'S1' | 'S2' | 'S3' | 'S4' | 'S5';
 type StageStatus = 'pending' | 'processing' | 'completed' | 'error';
@@ -15,6 +15,7 @@ interface StageState {
   status: StageStatus;
   data: any;
   error?: string;
+  progress?: number;
 }
 
 export default function PipelinePage() {
@@ -26,6 +27,7 @@ export default function PipelinePage() {
     S4: { status: 'pending', data: null },
     S5: { status: 'pending', data: null },
   });
+  const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
 
   const loadSubmission = async (id: string) => {
     try {
@@ -43,7 +45,7 @@ export default function PipelinePage() {
         S2: { status: data.s2_presentation_data ? 'completed' : 'pending', data: data.s2_presentation_data },
         S3: { status: data.s3_video_production_data ? 'completed' : 'pending', data: data.s3_video_production_data },
         S4: { status: data.s4_assembly_data ? 'completed' : 'pending', data: data.s4_assembly_data },
-        S5: { status: data.s5_master_guide ? 'completed' : 'pending', data: data.s5_master_guide },
+        S5: { status: 'pending', data: null },
       });
     } catch (error) {
       console.error('Error loading submission:', error);
@@ -51,7 +53,7 @@ export default function PipelinePage() {
     }
   };
 
-  const generateStage = async (stage: 'S2' | 'S3' | 'S4' | 'S5') => {
+  const generateStage = async (stage: 'S2' | 'S3' | 'S4') => {
     if (!submissionId) {
       alert('Please enter a submission ID first');
       return;
@@ -59,26 +61,18 @@ export default function PipelinePage() {
 
     setStages((prev) => ({
       ...prev,
-      [stage]: { ...prev[stage], status: 'processing', error: undefined },
+      [stage]: { ...prev[stage], status: 'processing', error: undefined, progress: 0 },
     }));
 
     try {
-      const payload: any = { submissionId };
+      const payload: any = {};
 
       if (stage === 'S2') {
         payload.s1Data = stages.S1.data;
       } else if (stage === 'S3') {
-        payload.s1Data = stages.S1.data;
         payload.s2Data = stages.S2.data;
       } else if (stage === 'S4') {
-        payload.s1Data = stages.S1.data;
-        payload.s2Data = stages.S2.data;
         payload.s3Data = stages.S3.data;
-      } else if (stage === 'S5') {
-        payload.s1Data = stages.S1.data;
-        payload.s2Data = stages.S2.data;
-        payload.s3Data = stages.S3.data;
-        payload.s4Data = stages.S4.data;
       }
 
       const response = await fetch(`/api/generate/${stage.toLowerCase()}`, {
@@ -88,22 +82,49 @@ export default function PipelinePage() {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Generation failed');
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
-      const result = await response.json();
-      const dataKey = `${stage.toLowerCase()}Data`;
+      if (!response.body) {
+        throw new Error('No response body');
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let accumulatedText = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        accumulatedText += chunk;
+
+        setStages((prev) => ({
+          ...prev,
+          [stage]: {
+            ...prev[stage],
+            data: accumulatedText,
+            progress: Math.min(prev[stage].progress || 0 + 10, 90),
+          },
+        }));
+      }
 
       setStages((prev) => ({
         ...prev,
-        [stage]: { status: 'completed', data: result[dataKey] },
+        [stage]: { status: 'completed', data: accumulatedText, progress: 100 },
       }));
 
-      const updateField = `${stage.toLowerCase()}_${stage === 'S2' ? 'presentation' : stage === 'S3' ? 'video_production' : stage === 'S4' ? 'assembly' : 'master_guide'}_data`;
+      const updateField = `${stage.toLowerCase()}_${
+        stage === 'S2' ? 'presentation' :
+        stage === 'S3' ? 'video_production' :
+        'assembly'
+      }_data`;
+
       await supabase
         .from('content_strategy_submissions')
-        .update({ [updateField]: result[dataKey] })
+        .update({ [updateField]: accumulatedText })
         .eq('id', submissionId);
 
     } catch (error: any) {
@@ -113,6 +134,59 @@ export default function PipelinePage() {
         [stage]: { ...prev[stage], status: 'error', error: error.message },
       }));
     }
+  };
+
+  const handleGenerateS5PDF = async () => {
+    if (!stages.S3.data || !stages.S4.data) {
+      alert('S3 and S4 must be completed first');
+      return;
+    }
+
+    setStages((prev) => ({
+      ...prev,
+      S5: { status: 'processing', data: null, progress: 0 },
+    }));
+
+    try {
+      const businessName = extractBusinessName(stages.S3.data);
+
+      const blob = await generateS5PDF(
+        stages.S3.data,
+        stages.S4.data,
+        { businessName },
+        (progress) => {
+          setStages((prev) => ({
+            ...prev,
+            S5: { ...prev.S5, progress },
+          }));
+        }
+      );
+
+      setPdfBlob(blob);
+
+      setStages((prev) => ({
+        ...prev,
+        S5: { status: 'completed', data: 'PDF Generated Successfully', progress: 100 },
+      }));
+
+    } catch (error: any) {
+      console.error('Error generating S5 PDF:', error);
+      setStages((prev) => ({
+        ...prev,
+        S5: { ...prev.S5, status: 'error', error: error.message },
+      }));
+    }
+  };
+
+  const downloadS5PDF = () => {
+    if (!pdfBlob) {
+      alert('PDF not generated yet');
+      return;
+    }
+
+    const businessName = extractBusinessName(stages.S3.data || '');
+    const filename = `${businessName.replace(/\s+/g, '_')}_Production_Guide.pdf`;
+    downloadPDFBlob(pdfBlob, filename);
   };
 
   const getStatusIcon = (status: StageStatus) => {
@@ -129,13 +203,6 @@ export default function PipelinePage() {
   };
 
   const getStatusBadge = (status: StageStatus) => {
-    const variants: Record<StageStatus, any> = {
-      pending: 'secondary',
-      processing: 'default',
-      completed: 'default',
-      error: 'destructive',
-    };
-
     const colors: Record<StageStatus, string> = {
       pending: 'bg-gray-100 text-gray-800',
       processing: 'bg-blue-100 text-blue-800',
@@ -155,7 +222,7 @@ export default function PipelinePage() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Production Pipeline</h1>
         <p className="mt-2 text-gray-600">
-          Manage the S1-S5 content generation pipeline
+          S1 → S2 → S3 → S4 → S5 content generation pipeline with streaming
         </p>
       </div>
 
@@ -185,11 +252,12 @@ export default function PipelinePage() {
       <div className="grid grid-cols-1 gap-6">
         {(['S1', 'S2', 'S3', 'S4', 'S5'] as PipelineStage[]).map((stage) => {
           const stageInfo = stages[stage];
-          const canGenerate = stage === 'S1' ? false :
+          const canGenerate =
+            stage === 'S1' ? false :
             stage === 'S2' ? stages.S1.status === 'completed' :
             stage === 'S3' ? stages.S2.status === 'completed' :
             stage === 'S4' ? stages.S3.status === 'completed' :
-            stages.S4.status === 'completed';
+            stages.S4.status === 'completed' && stages.S3.status === 'completed';
 
           return (
             <Card key={stage}>
@@ -201,22 +269,22 @@ export default function PipelinePage() {
                       <CardTitle>{stage} - {
                         stage === 'S1' ? 'Survey Data' :
                         stage === 'S2' ? 'Presentation' :
-                        stage === 'S3' ? 'Video Production' :
-                        stage === 'S4' ? 'Assembly' :
-                        'Master Guide'
+                        stage === 'S3' ? 'Video Production Package' :
+                        stage === 'S4' ? 'Assembly Instructions' :
+                        'Master PDF Guide'
                       }</CardTitle>
                       <CardDescription className="mt-1">
                         {stage === 'S1' ? 'Client survey responses' :
-                         stage === 'S2' ? 'Strategic presentation' :
-                         stage === 'S3' ? 'Video production plans' :
-                         stage === 'S4' ? 'Assembly instructions' :
-                         'Comprehensive master guide'}
+                         stage === 'S2' ? 'Strategic video presentation script' :
+                         stage === 'S3' ? 'Complete asset list with AI prompts' :
+                         stage === 'S4' ? 'Step-by-step assembly guide' :
+                         'Combined S3 + S4 as PDF (client-side)'}
                       </CardDescription>
                     </div>
                   </div>
                   <div className="flex items-center space-x-3">
                     {getStatusBadge(stageInfo.status)}
-                    {stage !== 'S1' && (
+                    {stage !== 'S1' && stage !== 'S5' && (
                       <Button
                         onClick={() => generateStage(stage as any)}
                         disabled={!canGenerate || stageInfo.status === 'processing'}
@@ -230,8 +298,45 @@ export default function PipelinePage() {
                         <span className="ml-2">Generate</span>
                       </Button>
                     )}
+                    {stage === 'S5' && (
+                      <>
+                        <Button
+                          onClick={handleGenerateS5PDF}
+                          disabled={!canGenerate || stageInfo.status === 'processing'}
+                          size="sm"
+                        >
+                          {stageInfo.status === 'processing' ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Play className="w-4 h-4" />
+                          )}
+                          <span className="ml-2">Generate PDF</span>
+                        </Button>
+                        {stageInfo.status === 'completed' && pdfBlob && (
+                          <Button
+                            onClick={downloadS5PDF}
+                            variant="outline"
+                            size="sm"
+                          >
+                            <Download className="w-4 h-4" />
+                            <span className="ml-2">Download</span>
+                          </Button>
+                        )}
+                      </>
+                    )}
                   </div>
                 </div>
+                {stageInfo.status === 'processing' && stageInfo.progress !== undefined && (
+                  <div className="mt-2">
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${stageInfo.progress}%` }}
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">{stageInfo.progress}%</p>
+                  </div>
+                )}
               </CardHeader>
               {(stageInfo.data || stageInfo.error) && (
                 <CardContent>
@@ -242,8 +347,10 @@ export default function PipelinePage() {
                   )}
                   {stageInfo.data && (
                     <div className="bg-gray-50 rounded-md p-4 max-h-96 overflow-auto">
-                      <pre className="text-xs text-gray-700">
-                        {JSON.stringify(stageInfo.data, null, 2)}
+                      <pre className="text-xs text-gray-700 whitespace-pre-wrap">
+                        {typeof stageInfo.data === 'string'
+                          ? stageInfo.data
+                          : JSON.stringify(stageInfo.data, null, 2)}
                       </pre>
                     </div>
                   )}

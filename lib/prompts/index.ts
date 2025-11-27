@@ -1,239 +1,268 @@
-import { S1SurveyData, S2PresentationData, S3VideoProductionData, S4AssemblyData } from '../types/pipeline';
+// Production Prompts for Electric Studio Admin Portal
+// S1 → S2 → S3 → S4 → S5 Pipeline
+// Note: S5 uses client-side jsPDF (no Claude API call)
 
-export const generateS2Prompt = (s1Data: S1SurveyData): string => {
-  return `You are a content strategist creating a professional client presentation based on survey data.
+// ============================================================================
+// CLAUDE MODEL CONFIGURATION
+// ============================================================================
 
-CLIENT SURVEY DATA:
-${JSON.stringify(s1Data, null, 2)}
+export const CLAUDE_MODEL = 'claude-sonnet-4-20250514';
 
-Create a comprehensive S2 presentation document with the following structure:
-
-1. PROJECT OVERVIEW
-   - Business name and industry
-   - Target audience analysis
-   - Primary objectives
-
-2. STRATEGY RECOMMENDATIONS
-   - Content pillars (3-5 main themes)
-   - Recommended platforms
-   - Posting frequency
-   - Content mix (percentages for different content types)
-
-3. DELIVERABLES
-   - Organized by category (Website, Photography, Video, Social Media, etc.)
-   - Specific items in each category
-   - Timeline for each deliverable category
-
-4. TIMELINE
-   - Break into phases (Discovery, Production, Launch, Ongoing)
-   - Duration for each phase
-   - Key milestones
-
-5. INVESTMENT
-   - Package name
-   - Total investment range
-   - Breakdown by service category
-   - Payment terms
-
-6. NEXT STEPS
-   - Immediate action items
-   - What client needs to provide
-   - Timeline for decision
-
-Return ONLY a valid JSON object matching the S2PresentationData TypeScript interface. Do not include markdown formatting or code blocks.`;
+export const TOKEN_LIMITS = {
+  s2: 16000,  // Presentation output
+  s3: 32000,  // Production package (largest output)
+  s4: 16000,  // Assembly instructions
 };
 
-export const generateS3Prompt = (s1Data: S1SurveyData, s2Data: S2PresentationData): string => {
-  return `You are a video production director creating detailed video project specifications.
+// ============================================================================
+// S2 GENERATION INSTRUCTIONS - Presentation Generator
+// ============================================================================
 
-CLIENT SURVEY DATA:
-${JSON.stringify(s1Data, null, 2)}
+export const S2_GENERATION_INSTRUCTIONS = `You are a senior brand strategist at Electric Studio with 20+ years of experience in television production, photography, videography, and graphic design.
 
-APPROVED STRATEGY:
-${JSON.stringify(s2Data, null, 2)}
+Your task is to generate a comprehensive video presentation script based on the client survey data provided.
 
-Based on the client's preferred content types and strategy, create detailed video production plans. Generate 3-5 video projects that align with their content strategy.
+## INSTRUCTIONS
 
-For each video project, include:
+1. **Analyze the client's business thoroughly**
+   - Understand their industry, target audience, and unique selling points
+   - Identify pain points and opportunities
 
-1. PROJECT DETAILS
-   - Unique project ID
-   - Title and type
-   - Platform and duration
-   - Objective and target audience
-   - Key messages to convey
+2. **Conduct industry-specific research**
+   - Include relevant statistics with proper citations
+   - Reference industry trends and best practices
+   - Use tier-1 sources (academic institutions, industry associations, government data)
 
-2. CREATIVE DIRECTION
-   - Visual style
-   - Tone and mood
-   - Brand alignment
-
-3. SHOOT REQUIREMENTS
-   - Location details
-   - Equipment needed
-   - Talent requirements
-   - Props and set dressing
-   - Estimated shoot duration
-
-4. SCRIPT OUTLINE
-   - Break into scenes
-   - For each scene: duration, description, dialogue, visuals, audio notes
-
-5. POST-PRODUCTION
-   - Editing requirements
-   - Graphics and animations needed
-   - Music and sound design
-   - Color grading notes
+3. **Generate a strategic presentation**
+   - Introduction hook (attention-grabbing opening)
+   - Client situation analysis
+   - Industry landscape and opportunities
+   - Electric Studio's strategic recommendations
+   - Content strategy overview
+   - Expected outcomes and ROI
    - Call to action
 
-6. DELIVERY SPECIFICATIONS
-   - File format
-   - Resolution
-   - Aspect ratio
-   - Frame rate
-   - Codec
+4. **Match style to their industry**
+   - Use appropriate tone (professional for B2B, friendly for consumer brands)
+   - Reference competitors and market positioning
 
-7. PRODUCTION SCHEDULE
-   - Pre-production tasks
-   - Production phase
-   - Post-production phase
-   - Review and approval
-   - Final delivery
+5. **Use Electric Studio positioning throughout**
+   - "Electric Studio offers/can/provides" language
+   - Emphasize 20+ years of professional experience
+   - Position as comprehensive digital partner
 
-Return ONLY a valid JSON object matching the S3VideoProductionData TypeScript interface. Do not include markdown formatting or code blocks.`;
-};
+6. **Important reminders**
+   - NO pricing or packages (goal is to create a hot lead)
+   - Format for video script, not slides
+   - Include visual cues in brackets [B-roll of happy customers]
+   - Keep sections clearly delineated
 
-export const generateS4Prompt = (
-  s1Data: S1SurveyData,
-  s2Data: S2PresentationData,
-  s3Data: S3VideoProductionData
-): string => {
-  return `You are a production manager creating detailed assembly guides for all project deliverables.
+## OUTPUT FORMAT
 
-CLIENT SURVEY DATA:
-${JSON.stringify(s1Data, null, 2)}
+Provide the presentation as structured sections with clear headers. Include:
+- Estimated duration for each section
+- Visual/B-roll suggestions in brackets
+- Key statistics with source citations
+- Transition notes between sections
 
-APPROVED STRATEGY:
-${JSON.stringify(s2Data, null, 2)}
+Begin the presentation now using the client data provided.`;
 
-VIDEO PRODUCTION PLANS:
-${JSON.stringify(s3Data, null, 2)}
+// ============================================================================
+// S3 GENERATION INSTRUCTIONS - Video Production Package
+// ============================================================================
 
-Create comprehensive assembly guides for all deliverables mentioned in the S2 strategy. This should include:
-- Website pages
-- Photography collections
-- Video content
-- Social media assets
-- Marketing materials
-- Any other deliverables from the strategy
+export const S3_GENERATION_INSTRUCTIONS = `You are an expert video production coordinator at Electric Studio with extensive experience creating comprehensive production packages for AI-powered video generation.
 
-For each deliverable, provide:
+Your task is to create a detailed Video Production Package based on the S2 Presentation provided.
 
-1. DELIVERABLE DETAILS
-   - Unique ID
-   - Name and type
-   - Priority level
+## INSTRUCTIONS
 
-2. REQUIRED ASSETS
-   - List all assets needed
-   - Asset type (photo, video, graphic, text, etc.)
-   - Description and source
+1. **Create Complete Asset Lists**
+   For each video segment, specify:
+   - Exact filename (format: PREFIX_Type_##.ext, e.g., AF_Video_01.mp4)
+   - Duration in seconds
+   - Detailed visual description
+   - Camera angles and movements
+   - Lighting requirements
+   - Subject/actor descriptions (generic, not client likeness)
+
+2. **Generate AI Tool Prompts**
+   Create specific prompts for:
+   - **Runway ML/Pika**: Video generation prompts
+   - **Midjourney/DALL-E**: Image generation prompts
+   - **Suno/Udio**: Music generation prompts
+   - **ElevenLabs**: Voice-over specifications
+
+3. **Organize by Video Segment**
+   Structure the package as:
+   - SEGMENT 1: Introduction
+   - SEGMENT 2: Problem/Opportunity
+   - SEGMENT 3: Solution Overview
+   - SEGMENT 4: Strategy Deep-Dive
+   - SEGMENT 5: Outcomes & CTA
+
+4. **Include Technical Specifications**
+   - Resolution: 1080p or 4K
+   - Frame rate: 24fps or 30fps
+   - Aspect ratios (16:9, 9:16 for social)
+   - Audio specifications
+
+5. **Create Asset Index**
+   Complete list of all assets with:
+   - Filename
+   - Type (video/image/audio)
+   - Duration/dimensions
+   - Generation tool
+   - Status placeholder
+
+## OUTPUT FORMAT
+
+Generate a comprehensive text document with:
+- Header with project info
+- Table of contents
+- Segment-by-segment breakdowns
+- Complete asset registry
+- AI generation prompts clearly formatted
+- Technical specifications appendix
+
+CRITICAL: Use generic descriptions. Never include:
+- Client's actual likeness or face
+- Specific business location addresses
+- Real employee names or photos
+
+Begin the production package now.`;
+
+// ============================================================================
+// S4 GENERATION INSTRUCTIONS - Assembly Instructions
+// ============================================================================
+
+export const S4_GENERATION_INSTRUCTIONS = `You are a senior video editor at Electric Studio with 20+ years of professional post-production experience including network television editing.
+
+Your task is to create step-by-step Assembly Instructions that will guide the final video assembly using the S3 Production Package.
+
+## INSTRUCTIONS
+
+1. **Create Timeline Structure**
+   - Detailed timeline with exact timestamps
+   - Layer organization (video, audio, graphics, music)
+   - Transition specifications
+
+2. **Write Step-by-Step Assembly Guide**
+   - Import and organize assets
+   - Place video clips with timing
+   - Add audio layers
+   - Insert transitions
+   - Apply effects and color grading
+   - Add text overlays and lower thirds
+   - Final audio mix
+
+3. **Include Editor Notes**
+   - Pacing recommendations
+   - Emotional beats to hit
+   - Timing for text reveals
+   - Music sync points
+
+4. **Specify Export Settings**
+   - Master file export settings
+   - Social media variants (YouTube, Instagram, TikTok)
+   - Thumbnail generation
+
+5. **Quality Control Checklist**
+   - Audio levels check
+   - Color consistency
+   - Text readability
+   - Brand compliance
    - Technical specifications
 
-3. ASSEMBLY STEPS
-   - Step-by-step instructions
-   - Tools/software needed for each step
-   - Estimated time per step
-   - Quality checks to perform
+## OUTPUT FORMAT
 
-4. TECHNICAL REQUIREMENTS
-   - Software needed
-   - Hardware requirements
-   - Required skills/expertise
+Create a comprehensive assembly guide with:
+- Project setup instructions
+- Timeline overview diagram (text-based)
+- Layer-by-layer breakdown
+- Timestamp-specific instructions
+- Effect and transition list
+- Export checklist
+- Quality assurance checklist
 
-5. QUALITY STANDARDS
-   - Quality criteria
-   - Requirements for each criterion
-   - How to verify quality
+Begin the assembly instructions now.`;
 
-6. DELIVERY FORMAT
-   - File format
-   - Technical specifications
-   - Naming conventions
+// ============================================================================
+// STAGE METADATA
+// ============================================================================
 
-7. PRODUCTION CHECKLIST
-   - Organized by category
-   - Each task with assignee, deadline, and status
-
-Return ONLY a valid JSON object matching the S4AssemblyData TypeScript interface. Do not include markdown formatting or code blocks.`;
+export const STAGE_METADATA = {
+  s1: {
+    name: 'Client Survey Data',
+    description: 'Upload the client survey JSON from the intake form',
+    estimatedTime: 'Instant',
+    icon: 'FileJson',
+  },
+  s2: {
+    name: 'Presentation Generator',
+    description: 'Strategic video presentation script with industry research',
+    estimatedTime: '30-60 seconds',
+    icon: 'Presentation',
+  },
+  s3: {
+    name: 'Video Production Package',
+    description: 'Complete asset list with AI generation prompts',
+    estimatedTime: '60-90 seconds',
+    icon: 'Video',
+  },
+  s4: {
+    name: 'Assembly Instructions',
+    description: 'Step-by-step video assembly guide for editors',
+    estimatedTime: '30-45 seconds',
+    icon: 'ListChecks',
+  },
+  s5: {
+    name: 'Master PDF Guide',
+    description: 'Combined S3 + S4 as professional PDF document',
+    estimatedTime: '3-10 seconds',
+    icon: 'FileText',
+  },
 };
 
-export const generateS5Prompt = (
-  s1Data: S1SurveyData,
-  s2Data: S2PresentationData,
-  s3Data: S3VideoProductionData,
-  s4Data: S4AssemblyData
-): string => {
-  return `You are a project director creating the master project guide that consolidates everything.
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
 
-CLIENT SURVEY DATA:
-${JSON.stringify(s1Data, null, 2)}
+/**
+ * Build S2 prompt with S1 data injected
+ */
+export function buildS2Prompt(s1Data: string): string {
+  return `${S2_GENERATION_INSTRUCTIONS}
 
-APPROVED STRATEGY (S2):
-${JSON.stringify(s2Data, null, 2)}
+## CLIENT SURVEY DATA (S1)
 
-VIDEO PRODUCTION PLANS (S3):
-${JSON.stringify(s3Data, null, 2)}
+${s1Data}
 
-ASSEMBLY GUIDES (S4):
-${JSON.stringify(s4Data, null, 2)}
+Generate the presentation now.`;
+}
 
-Create a comprehensive master guide that serves as the single source of truth for the entire project. This should include:
+/**
+ * Build S3 prompt with S2 data injected
+ */
+export function buildS3Prompt(s2Data: string): string {
+  return `${S3_GENERATION_INSTRUCTIONS}
 
-1. PROJECT SUMMARY
-   - Client name and project name
-   - Industry and objectives
-   - Timeline and budget
+## S2 PRESENTATION DATA
 
-2. CONTENT STRATEGY
-   - Brand voice and tone
-   - Visual identity guidelines
-   - Content pillars
-   - Platform-specific strategies
+${s2Data}
 
-3. ALL DELIVERABLES
-   - Organized by category
-   - Each with name, description, format, specs, deadline, status
+Generate the video production package now.`;
+}
 
-4. PRODUCTION WORKFLOW
-   - Phases of production
-   - Deliverables in each phase
-   - Dependencies between deliverables
-   - Timeline for each phase
-   - Team members assigned
+/**
+ * Build S4 prompt with S3 data injected
+ */
+export function buildS4Prompt(s3Data: string): string {
+  return `${S4_GENERATION_INSTRUCTIONS}
 
-5. QUALITY ASSURANCE
-   - QA checkpoints
-   - Criteria for each checkpoint
-   - Who approves
-   - When checks happen
+## S3 PRODUCTION PACKAGE
 
-6. CLIENT COMMUNICATION
-   - Key milestones requiring client communication
-   - Type of communication needed
-   - What deliverables to present
-   - Format (email, meeting, presentation)
+${s3Data}
 
-7. LAUNCH PLAN
-   - Platform-by-platform launch strategy
-   - Content to launch with
-   - Schedule
-   - Success metrics
-
-8. HANDOFF PACKAGE
-   - What gets delivered to client
-   - Contents of each package component
-   - Format and recipient
-
-Return ONLY a valid JSON object matching the S5MasterGuide TypeScript interface. Do not include markdown formatting or code blocks.`;
-};
+Generate the assembly instructions now.`;
+}

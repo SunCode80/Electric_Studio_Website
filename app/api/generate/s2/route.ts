@@ -1,76 +1,134 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { generateS2Prompt } from '@/lib/prompts';
-import { S1SurveyData, S2PresentationData } from '@/lib/types/pipeline';
+/**
+ * API Route: /api/generate/s2
+ * Generates S2 Presentation from S1 Survey Data
+ * Uses streaming for real-time output
+ */
+
+import { NextRequest } from 'next/server';
+import { buildS2Prompt, CLAUDE_MODEL, TOKEN_LIMITS } from '@/lib/prompts';
+
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 
 export async function POST(request: NextRequest) {
   try {
-    const { s1Data, submissionId } = await request.json();
+    if (!ANTHROPIC_API_KEY) {
+      return new Response(
+        JSON.stringify({ error: 'ANTHROPIC_API_KEY not configured' }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const body = await request.json();
+    const { s1Data } = body;
 
     if (!s1Data) {
-      return NextResponse.json(
-        { error: 'S1 survey data is required' },
-        { status: 400 }
+      return new Response(
+        JSON.stringify({ error: 'S1 data is required' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json(
-        { error: 'Anthropic API key not configured' },
-        { status: 500 }
-      );
-    }
-
-    const prompt = generateS2Prompt(s1Data as S1SurveyData);
+    const prompt = buildS2Prompt(
+      typeof s1Data === 'string' ? s1Data : JSON.stringify(s1Data, null, 2)
+    );
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': apiKey,
+        'x-api-key': ANTHROPIC_API_KEY,
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-3-5-sonnet-20241022',
-        max_tokens: 8192,
-        messages: [
-          {
-            role: 'user',
-            content: prompt,
-          },
-        ],
+        model: CLAUDE_MODEL,
+        max_tokens: TOKEN_LIMITS.s2,
+        stream: true,
+        messages: [{
+          role: 'user',
+          content: prompt
+        }]
       }),
     });
 
     if (!response.ok) {
       const error = await response.text();
       console.error('Anthropic API error:', error);
-      return NextResponse.json(
-        { error: 'Failed to generate S2 presentation' },
-        { status: response.status }
+      return new Response(
+        JSON.stringify({ error: 'Failed to generate S2 presentation' }),
+        { status: response.status, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
-    const data = await response.json();
-    const content = data.content[0].text;
-
-    let s2Data: S2PresentationData;
-    try {
-      s2Data = JSON.parse(content);
-    } catch (parseError) {
-      console.error('Failed to parse Claude response:', content);
-      return NextResponse.json(
-        { error: 'Failed to parse generated content' },
-        { status: 500 }
+    if (!response.body) {
+      return new Response(
+        JSON.stringify({ error: 'No response body from API' }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
-    return NextResponse.json({ s2Data, submissionId });
+    const encoder = new TextEncoder();
+    const decoder = new TextDecoder();
+
+    const readableStream = new ReadableStream({
+      async start(controller) {
+        try {
+          const reader = response.body!.getReader();
+
+          while (true) {
+            const { done, value } = await reader.read();
+
+            if (done) {
+              controller.close();
+              break;
+            }
+
+            const chunk = decoder.decode(value);
+            const lines = chunk.split('\n');
+
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                const data = line.slice(6);
+
+                if (data === '[DONE]') continue;
+
+                try {
+                  const parsed = JSON.parse(data);
+
+                  if (parsed.type === 'content_block_delta' &&
+                      parsed.delta?.type === 'text_delta') {
+                    controller.enqueue(encoder.encode(parsed.delta.text));
+                  }
+                } catch (e) {
+                  // Ignore parse errors for incomplete chunks
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Stream error:', error);
+          controller.error(error);
+        }
+      }
+    });
+
+    return new Response(readableStream, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      },
+    });
+
   } catch (error) {
-    console.error('Error generating S2 presentation:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+    console.error('S2 generation error:', error);
+    return new Response(
+      JSON.stringify({
+        error: 'S2 generation failed',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
 }
+
+export const maxDuration = 90;
