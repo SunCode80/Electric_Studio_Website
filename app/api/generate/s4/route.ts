@@ -62,9 +62,12 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Initialize Anthropic client
+    // Initialize Anthropic client with explicit authentication
     const anthropic = new Anthropic({
       apiKey: ANTHROPIC_API_KEY,
+      defaultHeaders: {
+        'anthropic-version': '2023-06-01',
+      },
     });
     
     // Build prompt
