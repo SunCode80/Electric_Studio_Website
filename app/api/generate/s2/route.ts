@@ -43,37 +43,49 @@ async function retryWithBackoff<T>(
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('[S2] Starting generation...');
+
     // Validate API key
     if (!ANTHROPIC_API_KEY) {
+      console.error('[S2] API key not configured');
       return NextResponse.json(
         { error: 'ANTHROPIC_API_KEY not configured' },
         { status: 500 }
       );
     }
 
+    console.log('[S2] API key present:', ANTHROPIC_API_KEY.substring(0, 20) + '...');
+
     // Parse request body
     const body = await request.json();
     const { s1Data } = body;
 
     if (!s1Data) {
+      console.error('[S2] S1 data missing');
       return NextResponse.json(
         { error: 'S1 data is required' },
         { status: 400 }
       );
     }
 
+    console.log('[S2] S1 data received, length:', JSON.stringify(s1Data).length);
+
     // Build prompt
     const prompt = buildS2Prompt(
       typeof s1Data === 'string' ? s1Data : JSON.stringify(s1Data, null, 2)
     );
 
+    console.log('[S2] Prompt built, length:', prompt.length);
+
     // Generate S2 with retry logic
     const response = await retryWithBackoff(async () => {
+      console.log('[S2] Initializing Anthropic client...');
       // Initialize Anthropic client inside the retry function
       const anthropic = new Anthropic({
         apiKey: ANTHROPIC_API_KEY,
       });
 
+      console.log('[S2] Making API call to Claude...');
       return anthropic.messages.create({
         model: CLAUDE_MODEL,
         max_tokens: TOKEN_LIMITS.s2,
@@ -84,15 +96,20 @@ export async function POST(request: NextRequest) {
       });
     }, 3, 2000);
 
+    console.log('[S2] API call successful');
+
     // Extract text content
     const textContent = response.content.find(block => block.type === 'text');
 
     if (!textContent || textContent.type !== 'text') {
+      console.error('[S2] No text content in response');
       return NextResponse.json(
         { error: 'No text content in response' },
         { status: 500 }
       );
     }
+
+    console.log('[S2] Response extracted, length:', textContent.text.length);
 
     return NextResponse.json({
       success: true,
@@ -101,7 +118,12 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('S2 generation error:', error);
+    console.error('[S2] Generation error (detailed):', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      fullError: error,
+    });
+
     return NextResponse.json(
       {
         error: 'S2 generation failed',

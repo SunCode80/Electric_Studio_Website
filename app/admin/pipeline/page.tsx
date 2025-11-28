@@ -72,11 +72,13 @@ export default function PipelinePage() {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Generation failed');
+        const errorData = await response.json();
+        console.error('S2 API Error Response:', errorData);
+        throw new Error(errorData.details || errorData.error || 'Generation failed');
       }
 
       const result = await response.json();
+      console.log('S2 API Success Response:', result);
 
       if (!result.success || !result.output) {
         throw new Error('Invalid response from API');
@@ -93,7 +95,7 @@ export default function PipelinePage() {
         .eq('id', submissionId);
 
     } catch (error: any) {
-      console.error('Error generating S2:', error);
+      console.error('Error generating S2 (Full):', error);
       setStages((prev) => ({
         ...prev,
         S2: { ...prev.S2, status: 'error', error: error.message },
