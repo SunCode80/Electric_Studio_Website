@@ -10,7 +10,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { buildS2Prompt, CLAUDE_MODEL, TOKEN_LIMITS } from '@/lib/prompts';
 
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+function getAnthropicApiKey(): string {
+  const key = process.env.ANTHROPIC_API_KEY;
+  if (!key) {
+    throw new Error('ANTHROPIC_API_KEY environment variable is not set');
+  }
+  return key;
+}
 
 // Retry with exponential backoff
 async function retryWithBackoff<T>(
@@ -45,16 +51,9 @@ export async function POST(request: NextRequest) {
   try {
     console.log('[S2] Starting generation...');
 
-    // Validate API key
-    if (!ANTHROPIC_API_KEY) {
-      console.error('[S2] API key not configured');
-      return NextResponse.json(
-        { error: 'ANTHROPIC_API_KEY not configured' },
-        { status: 500 }
-      );
-    }
-
-    console.log('[S2] API key present:', ANTHROPIC_API_KEY.substring(0, 20) + '...');
+    // Get API key
+    const apiKey = getAnthropicApiKey();
+    console.log('[S2] API key present:', apiKey.substring(0, 20) + '...');
 
     // Parse request body
     const body = await request.json();
@@ -77,29 +76,41 @@ export async function POST(request: NextRequest) {
 
     console.log('[S2] Prompt built, length:', prompt.length);
 
-    // Generate S2 with retry logic
+    // Generate S2 with retry logic using direct fetch
     const response = await retryWithBackoff(async () => {
-      console.log('[S2] Initializing Anthropic client...');
-      // Initialize Anthropic client inside the retry function
-      const anthropic = new Anthropic({
-        apiKey: ANTHROPIC_API_KEY,
+      console.log('[S2] Making direct API call to Claude...');
+
+      const fetchResponse = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01'
+        },
+        body: JSON.stringify({
+          model: CLAUDE_MODEL,
+          max_tokens: TOKEN_LIMITS.s2,
+          messages: [{
+            role: 'user',
+            content: prompt
+          }]
+        })
       });
 
-      console.log('[S2] Making API call to Claude...');
-      return anthropic.messages.create({
-        model: CLAUDE_MODEL,
-        max_tokens: TOKEN_LIMITS.s2,
-        messages: [{
-          role: 'user',
-          content: prompt
-        }]
-      });
+      if (!fetchResponse.ok) {
+        const errorData = await fetchResponse.json();
+        console.error('[S2] API error:', errorData);
+        throw new Error(`API error: ${JSON.stringify(errorData)}`);
+      }
+
+      const result = await fetchResponse.json();
+      return result;
     }, 3, 2000);
 
     console.log('[S2] API call successful');
 
     // Extract text content
-    const textContent = response.content.find(block => block.type === 'text');
+    const textContent = response.content.find((block: any) => block.type === 'text');
 
     if (!textContent || textContent.type !== 'text') {
       console.error('[S2] No text content in response');
