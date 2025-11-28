@@ -151,7 +151,7 @@ export async function deleteProject(projectId: string): Promise<boolean> {
 export async function uploadStageFile(
   projectId: string,
   stage: number,
-  content: string,
+  content: string | File,
   fileType: 'json' | 'txt' | 'pdf'
 ): Promise<string | null> {
   try {

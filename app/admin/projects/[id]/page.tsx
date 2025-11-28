@@ -10,6 +10,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { getProject, downloadStageFile, updateProjectStage, uploadStageFile } from '@/lib/api/projects';
 import { Project } from '@/lib/types/project';
 import { toast } from 'sonner';
+import { generateS5PDF, extractBusinessName } from '@/lib/pdfGenerator';
+import { supabase } from '@/lib/supabase/client';
 
 export default function ProjectPipelinePage() {
   const params = useParams();
@@ -110,23 +112,89 @@ export default function ProjectPipelinePage() {
     }
   }
 
-  async function handleDownload(stage: number) {
+  async function handleGenerateS5() {
+    if (!project) return;
+
+    setGeneratingStage(5);
+    toast.info('Generating PDF...');
+
     try {
-      const content = await downloadStageFile(projectId, stage);
-      if (!content) {
-        toast.error('File not found');
-        return;
+      const s3Content = await downloadStageFile(projectId, 3);
+      const s4Content = await downloadStageFile(projectId, 4);
+
+      if (!s3Content || !s4Content) {
+        throw new Error('S3 or S4 data not found');
       }
 
-      const blob = new Blob([content], { type: 'text/plain' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${project?.client_name}-S${stage}.txt`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      const businessName = extractBusinessName(s3Content);
+      const pdfBlob = await generateS5PDF(s3Content, s4Content, { businessName });
+
+      const file = new File([pdfBlob], `${project.client_name}-Final-Presentation.pdf`, {
+        type: 'application/pdf',
+      });
+
+      const filePath = await uploadStageFile(projectId, 5, file, 'pdf');
+      if (!filePath) throw new Error('Failed to upload PDF');
+
+      await updateProjectStage(projectId, 5, {
+        completed: true,
+        filePath,
+        generatedAt: new Date().toISOString(),
+      });
+
+      toast.success('PDF generated successfully!');
+      await loadProject();
+    } catch (error: any) {
+      console.error('PDF generation error:', error);
+      toast.error(`Failed to generate PDF: ${error.message}`);
+    } finally {
+      setGeneratingStage(null);
+    }
+  }
+
+  async function handleDownload(stage: number) {
+    try {
+      if (stage === 5) {
+        const filePath = (project as any)[`s${stage}_file_path`];
+        if (!filePath) {
+          toast.error('File not found');
+          return;
+        }
+
+        const { data, error } = await supabase.storage
+          .from('project-files')
+          .download(filePath);
+
+        if (error || !data) {
+          toast.error('Failed to download PDF');
+          return;
+        }
+
+        const url = URL.createObjectURL(data);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${project?.client_name}-Final-Presentation.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } else {
+        const content = await downloadStageFile(projectId, stage);
+        if (!content) {
+          toast.error('File not found');
+          return;
+        }
+
+        const blob = new Blob([content], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${project?.client_name}-S${stage}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
 
       toast.success('File downloaded');
     } catch (error) {
@@ -163,7 +231,7 @@ export default function ProjectPipelinePage() {
       id: 5,
       name: 'Final PDF (S5)',
       description: 'Complete presentation PDF document',
-      canGenerate: false,
+      canGenerate: true,
     },
   ];
 
@@ -299,11 +367,11 @@ export default function ProjectPipelinePage() {
                   {stage.canGenerate && status === 'ready' && (
                     <Button
                       size="sm"
-                      onClick={() => handleGenerate(stage.id)}
+                      onClick={() => stage.id === 5 ? handleGenerateS5() : handleGenerate(stage.id)}
                       disabled={generatingStage !== null}
                     >
                       <Play className="w-4 h-4 mr-2" />
-                      Generate
+                      {stage.id === 5 ? 'Generate PDF' : 'Generate'}
                     </Button>
                   )}
                   {status === 'generating' && (
