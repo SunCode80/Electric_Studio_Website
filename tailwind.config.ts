@@ -21,6 +21,9 @@ const config: Config = {
         sm: 'calc(var(--radius) - 4px)',
       },
       colors: {
+        'electric-blue': '#0066FF',
+        'electric-yellow': '#FFD700',
+        'dark-bg': '#0A0F1E',
         'electric-purple': '#9333ea',
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',

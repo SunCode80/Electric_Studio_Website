@@ -54,13 +54,13 @@ export default function AdminDashboard() {
     <div>
       <div className="mb-8 flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Production Pipeline</h1>
-          <p className="mt-2 text-gray-600">
+          <h1 className="text-3xl font-bold text-white">Production Pipeline</h1>
+          <p className="mt-2 text-gray-400">
             Manage your content production projects
           </p>
         </div>
         <Link href="/admin/projects/create">
-          <Button>
+          <Button className="bg-electric-blue hover:bg-blue-600">
             <Plus className="w-4 h-4 mr-2" />
             New Project
           </Button>
@@ -68,42 +68,42 @@ export default function AdminDashboard() {
       </div>
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-3 mb-8">
-        <Card>
+        <Card className="bg-gray-800 border-gray-700">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Projects</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-300">Total Projects</CardTitle>
             <Folder className="h-4 w-4 text-gray-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.total}</div>
+            <div className="text-2xl font-bold text-white">{stats.total}</div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="bg-gray-800 border-gray-700">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">In Progress</CardTitle>
-            <Clock className="h-4 w-4 text-blue-500" />
+            <CardTitle className="text-sm font-medium text-gray-300">In Progress</CardTitle>
+            <Clock className="h-4 w-4 text-electric-blue" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.inProgress}</div>
+            <div className="text-2xl font-bold text-white">{stats.inProgress}</div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="bg-gray-800 border-gray-700">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Completed</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-300">Completed</CardTitle>
             <CheckCircle2 className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.completed}</div>
+            <div className="text-2xl font-bold text-white">{stats.completed}</div>
           </CardContent>
         </Card>
       </div>
 
       {projects.length === 0 ? (
-        <Card>
+        <Card className="bg-gray-800 border-gray-700">
           <CardContent className="flex flex-col items-center justify-center py-16">
-            <Folder className="w-16 h-16 text-gray-300 mb-4" />
-            <p className="text-gray-500 text-lg mb-4">No projects yet</p>
+            <Folder className="w-16 h-16 text-gray-600 mb-4" />
+            <p className="text-gray-400 text-lg mb-4">No projects yet</p>
             <Link href="/admin/projects/create">
-              <Button>
+              <Button className="bg-electric-blue hover:bg-blue-600">
                 <Plus className="w-4 h-4 mr-2" />
                 Create Your First Project
               </Button>
@@ -115,23 +115,23 @@ export default function AdminDashboard() {
           {projects.map((project) => (
             <Card
               key={project.id}
-              className="hover:shadow-lg transition-shadow cursor-pointer"
+              className="bg-gray-800 border-gray-700 hover:border-electric-blue transition-all cursor-pointer"
               onClick={() => router.push(`/admin/projects/${project.id}`)}
             >
               <CardHeader>
-                <CardTitle className="text-lg">{project.client_name}</CardTitle>
-                <CardDescription>{project.project_name}</CardDescription>
+                <CardTitle className="text-lg text-white">{project.client_name}</CardTitle>
+                <CardDescription className="text-gray-400">{project.project_name}</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   <div>
                     <div className="flex justify-between text-sm mb-1">
-                      <span className="text-gray-600">Progress</span>
-                      <span className="font-medium">{Math.round(getStageProgress(project))}%</span>
+                      <span className="text-gray-400">Progress</span>
+                      <span className="font-medium text-white">{Math.round(getStageProgress(project))}%</span>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="w-full bg-gray-700 rounded-full h-2">
                       <div
-                        className="bg-blue-500 h-2 rounded-full transition-all"
+                        className="bg-electric-blue h-2 rounded-full transition-all"
                         style={{ width: `${getStageProgress(project)}%` }}
                       />
                     </div>
@@ -143,21 +143,21 @@ export default function AdminDashboard() {
                         <div
                           key={stage}
                           className={`flex-1 h-2 rounded ${
-                            isCompleted ? 'bg-green-500' : 'bg-gray-200'
+                            isCompleted ? 'bg-green-500' : 'bg-gray-700'
                           }`}
                         />
                       );
                     })}
                   </div>
                   <div className="flex justify-between items-center text-sm">
-                    <span className="text-gray-500">
+                    <span className="text-gray-400">
                       Stage {project.current_stage}/5
                     </span>
                     <span
                       className={`px-2 py-1 rounded text-xs font-medium ${
                         project.s5_completed
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-blue-100 text-blue-800'
+                          ? 'bg-green-900 text-green-300'
+                          : 'bg-blue-900 text-electric-blue'
                       }`}
                     >
                       {project.s5_completed ? 'Complete' : 'In Progress'}
