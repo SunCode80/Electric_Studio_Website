@@ -68,11 +68,20 @@ export default function CreateProjectPage() {
       setSurveyFile(file);
       setSurveyData(data);
 
-      const company = data.companyName || data.company_name || data.company || data.clientName || data.client_name || data.client || data.businessName || data.business_name || '';
+      const ownerName = data.ownerName || data.owner_name || data.owner || data.name || data.clientName || data.client_name || data.client || '';
+      const companyName = data.companyName || data.company_name || data.company || data.businessName || data.business_name || '';
 
-      if (company) {
-        setClientName(company);
-        setProjectName(`${company} Content Strategy`);
+      if (ownerName) {
+        setClientName(ownerName);
+      }
+
+      if (companyName) {
+        setProjectName(`${companyName} Content Strategy`);
+      } else if (ownerName) {
+        setProjectName(`${ownerName} Content Strategy`);
+      }
+
+      if (ownerName || companyName) {
         toast.success('Project details auto-filled from survey data');
       }
     } catch (err) {
