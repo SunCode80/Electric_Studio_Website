@@ -68,11 +68,12 @@ export default function CreateProjectPage() {
       setSurveyFile(file);
       setSurveyData(data);
 
-      if (!clientName && data.companyName) {
-        setClientName(data.companyName);
-      }
-      if (!projectName && data.companyName) {
-        setProjectName(`${data.companyName} Content Strategy`);
+      const company = data.companyName || data.company_name || data.company || data.clientName || data.client_name || data.client || data.businessName || data.business_name || '';
+
+      if (company) {
+        setClientName(company);
+        setProjectName(`${company} Content Strategy`);
+        toast.success('Project details auto-filled from survey data');
       }
     } catch (err) {
       setError('Failed to parse JSON file. Please check the file format.');
