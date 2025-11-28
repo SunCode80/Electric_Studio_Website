@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { getProject, downloadStageFile, updateProjectStage, uploadStageFile } from '@/lib/api/projects';
-import { generateStage } from '@/lib/api/anthropic';
 import { Project } from '@/lib/types/project';
 import { toast } from 'sonner';
 
@@ -38,25 +37,39 @@ export default function ProjectPipelinePage() {
     toast.info(`Generating Stage ${stage}...`);
 
     try {
-      let inputData: any = {};
+      let payload: any = {};
+      let endpoint = '';
 
       if (stage === 2) {
         const s1Content = await downloadStageFile(projectId, 1);
         if (!s1Content) throw new Error('S1 data not found');
-        inputData.s1 = s1Content;
+        payload = { s1Data: s1Content };
+        endpoint = '/api/generate/s2';
       } else if (stage === 3) {
-        const s1Content = await downloadStageFile(projectId, 1);
         const s2Content = await downloadStageFile(projectId, 2);
-        if (!s1Content || !s2Content) throw new Error('Previous stage data not found');
-        inputData.s1 = s1Content;
-        inputData.s2 = s2Content;
+        if (!s2Content) throw new Error('S2 data not found');
+        payload = { s2Data: s2Content };
+        endpoint = '/api/generate/s3';
       } else if (stage === 4) {
         const s3Content = await downloadStageFile(projectId, 3);
         if (!s3Content) throw new Error('S3 data not found');
-        inputData.s3 = s3Content;
+        payload = { s3Data: s3Content };
+        endpoint = '/api/generate/s4';
       }
 
-      const output = await generateStage(stage, inputData);
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.details || errorData.error || 'Generation failed');
+      }
+
+      const result = await response.json();
+      const output = result.output;
 
       const filePath = await uploadStageFile(projectId, stage, output, 'txt');
       if (!filePath) throw new Error('Failed to upload generated content');
