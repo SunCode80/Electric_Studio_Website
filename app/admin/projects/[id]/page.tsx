@@ -68,8 +68,28 @@ export default function ProjectPipelinePage() {
         throw new Error(errorData.details || errorData.error || 'Generation failed');
       }
 
-      const result = await response.json();
-      const output = result.output;
+      let output: string;
+
+      if (stage === 2) {
+        const result = await response.json();
+        output = result.output;
+      } else {
+        if (!response.body) {
+          throw new Error('No response body');
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let accumulatedText = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          accumulatedText += decoder.decode(value);
+        }
+
+        output = accumulatedText;
+      }
 
       const filePath = await uploadStageFile(projectId, stage, output, 'txt');
       if (!filePath) throw new Error('Failed to upload generated content');
