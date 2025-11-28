@@ -13,6 +13,7 @@ export const TOKEN_LIMITS = {
   s2: 16000,  // Presentation output (JSON)
   s3: 32000,  // Production package (largest output - streaming)
   s4: 16000,  // Assembly instructions (streaming)
+  s6: 16000,  // Stock library search keywords (JSON)
 };
 
 // =============================================================================
@@ -733,6 +734,302 @@ END OF ASSEMBLY INSTRUCTIONS
 Generate the complete Assembly Instructions now as a text document.`;
 
 // =============================================================================
+// S6 GENERATION INSTRUCTIONS - Stock Library Assets Generator
+// =============================================================================
+// Transforms S3 AI generation prompts into optimized stock library search keywords
+// =============================================================================
+
+export const S6_GENERATION_INSTRUCTIONS = `You are a Stock Library Search Keyword Generator for Electric Studio. Your job is to convert AI generation prompts into optimized search queries for stock libraries.
+
+## YOUR TASK
+Transform the S3 Video Production Package (specifically the AI generation prompts) into comprehensive stock library search keywords for platforms like Adobe Stock, Artlist, Storyblocks, and Envato Elements.
+
+## CORE PURPOSE
+Instead of generating AI assets (which costs money and time), convert AI prompts into stock search keywords so assets can be found faster and cheaper in professional stock libraries.
+
+## CONVERSION PROCESS
+
+For each asset prompt, you will:
+
+### 1. DECONSTRUCT the AI prompt into:
+- **Primary Subject** (main focus)
+- **Action/Activity** (what's happening)
+- **Environment/Setting** (where)
+- **Mood/Emotion** (feeling)
+- **Technical Style** (camera, lighting, speed)
+- **Color Palette** (colors mentioned)
+
+### 2. GENERATE stock-friendly keywords:
+- **Primary Keywords** (2-4 essential terms)
+- **Secondary Keywords** (context/refinement)
+- **Style Keywords** (quality filters: 4K, cinematic, professional)
+
+### 3. CREATE platform-specific search strings for:
+- **Adobe Stock** (add: 4K, cinematic, professional)
+- **Artlist** (add: mood tags, action-focused)
+- **Storyblocks** (add: footage, b-roll, clip)
+- **Envato Elements** (add: stock footage, template)
+
+### 4. PROVIDE selection criteria:
+- What makes a good match
+- What to look for
+- What to avoid
+
+### 5. SUGGEST backup alternatives:
+- If primary search fails
+- Related concepts that work
+
+## KEYWORD RULES
+
+### Primary Keyword Rules:
+1. **Subject First:** "personal trainer kettlebell" NOT "kettlebell with trainer"
+2. **Action Verbs:** Include action when possible: "woman running treadmill"
+3. **Avoid Jargon:** Use common terms: "video call meeting" NOT "synchronous teleconference"
+4. **Specific > Generic:** "barista making latte coffee shop" NOT "coffee worker"
+
+### Quality Filter Keywords:
+- Resolution: 4K, HD, UHD
+- Style: cinematic, professional, commercial
+- Technical: slow motion, drone, steadicam
+
+### Keywords to AVOID:
+- cheap, free, simple
+- cartoon, animation (unless needed)
+- clip art, amateur, home video
+- Very generic alone: business, people, office
+
+## OUTPUT FORMAT
+
+Return a structured JSON object:
+
+\`\`\`json
+{
+  "projectName": "string",
+  "clientPrefix": "string",
+  "generatedAt": "ISO date string",
+  "assets": [
+    {
+      "assetId": "PREFIX_Video_01.mp4",
+      "assetType": "video",
+      "originalPrompt": "The full AI prompt from S3",
+      "scriptContext": "When/where it appears in video",
+      "duration": "12s",
+      "technicalRequirements": {
+        "resolution": "1080p minimum, 4K preferred",
+        "frameRate": "30fps or 60fps",
+        "orientation": "Landscape (16:9)"
+      },
+      "deconstructedElements": {
+        "primarySubject": ["personal trainer", "kettlebell", "gym"],
+        "action": ["training", "coaching", "workout"],
+        "environment": ["modern gym", "fitness studio"],
+        "mood": ["energetic", "motivational", "dynamic"],
+        "technicalStyle": ["slow motion", "cinematic", "shallow DOF"],
+        "colors": ["bright", "professional lighting"]
+      },
+      "searches": {
+        "adobeStock": [
+          "personal trainer kettlebell coaching 4K",
+          "fitness training gym slow motion",
+          "workout motivation athletic cinematic",
+          "gym exercise professional lighting"
+        ],
+        "artlist": [
+          "fitness workout energetic",
+          "gym training motivation",
+          "personal training session"
+        ],
+        "storyblocks": [
+          "kettlebell workout gym b-roll",
+          "fitness training slow motion",
+          "personal trainer client coaching"
+        ],
+        "envatoElements": [
+          "gym fitness training 4K footage",
+          "workout exercise stock video",
+          "athletic training cinematic"
+        ]
+      },
+      "selectionCriteria": [
+        "Shows trainer AND client (not solo workout)",
+        "Modern, well-lit gym environment",
+        "Dynamic movement (not static poses)",
+        "No visible branding or logos",
+        "Diverse/inclusive subjects preferred",
+        "Professional quality lighting"
+      ],
+      "backupOptions": [
+        "If no kettlebell: Search 'dumbbell workout' or 'weight training'",
+        "If no trainer-client: Search 'group fitness class'",
+        "If need shorter: Look for 'workout montage'"
+      ]
+    },
+    {
+      "assetId": "PREFIX_Music_01.mp3",
+      "assetType": "music",
+      "originalPrompt": "Uplifting corporate music, energetic but not overwhelming...",
+      "durationNeeded": "3:00",
+      "moodKeywords": ["uplifting", "inspiring", "motivational", "energetic", "positive", "confident"],
+      "genreStyle": ["Corporate pop", "Inspiring ambient", "Modern electronic", "Upbeat instrumental"],
+      "searches": {
+        "artlist": [
+          "Mood: Inspiring + Genre: Corporate",
+          "Mood: Energetic + Instrument: Electronic",
+          "Search: motivational corporate background"
+        ],
+        "epidemicSound": [
+          "corporate inspiration",
+          "uplifting business",
+          "energetic presentation"
+        ],
+        "envatoElements": [
+          "inspiring corporate music",
+          "motivational background track",
+          "uplifting business presentation"
+        ]
+      },
+      "bpmRange": "100-130 BPM",
+      "selectionCriteria": [
+        "Instrumental only (no vocals)",
+        "Clear build/swell moments for transitions",
+        "Not too busy (won't compete with voiceover)",
+        "Professional, polished production quality",
+        "3+ minutes length (avoid loops if possible)"
+      ],
+      "backupOptions": []
+    },
+    {
+      "assetId": "PREFIX_Infographic_01.png",
+      "assetType": "graphic",
+      "originalPrompt": "Modern infographic showing 73% statistic...",
+      "content": "73% statistic with supporting text",
+      "searchOptions": {
+        "templates": [
+          {
+            "platform": "Adobe Stock",
+            "query": "infographic template statistics blue"
+          },
+          {
+            "platform": "Envato Elements",
+            "query": "statistic infographic after effects"
+          }
+        ],
+        "elements": [
+          {
+            "platform": "Adobe Stock",
+            "query": "number statistics icon set"
+          },
+          {
+            "platform": "Envato Elements",
+            "query": "infographic elements pack"
+          }
+        ],
+        "createManually": [
+          "Download template",
+          "Customize with actual statistic (73%)",
+          "Match brand colors from styleProfile"
+        ]
+      },
+      "brandColorReference": {
+        "primary": "#7c3aed",
+        "secondary": "#f97316"
+      },
+      "selectionCriteria": [
+        "Template must be customizable",
+        "Should support brand color changes",
+        "Clean, modern aesthetic",
+        "Readable at 1080p"
+      ],
+      "backupOptions": [
+        "Create manually in After Effects",
+        "Use Canva data visualization templates"
+      ]
+    }
+  ],
+  "platformRecommendations": {
+    "artlist": {
+      "bestFor": "Video + Music",
+      "monthlyCost": "$16.60/mo",
+      "keyFeature": "Unlimited downloads, excellent music library"
+    },
+    "envatoElements": {
+      "bestFor": "Everything (all-in-one)",
+      "monthlyCost": "$16.50/mo",
+      "keyFeature": "Video, music, graphics, templates included"
+    },
+    "adobeStock": {
+      "bestFor": "Integration",
+      "monthlyCost": "$29.99/mo",
+      "keyFeature": "Direct Premiere/After Effects integration"
+    },
+    "storyblocks": {
+      "bestFor": "Volume",
+      "monthlyCost": "$15/mo",
+      "keyFeature": "Unlimited downloads"
+    }
+  },
+  "downloadChecklist": [
+    {
+      "assetId": "PREFIX_Video_01",
+      "assetType": "video",
+      "found": false,
+      "stockId": "",
+      "downloaded": false
+    }
+  ],
+  "fileOrganization": {
+    "folderStructure": "[BusinessName]_Stock_Assets/\n├── 01_VIDEO/\n│   ├── [PREFIX]_Video_01_[StockID].mp4\n├── 02_IMAGES/\n├── 03_GRAPHICS/\n├── 04_MUSIC/\n└── 00_DOCUMENTATION/",
+    "namingConvention": "[Original S3 Name]_[StockLibrary-AssetID].[ext]",
+    "example": "AF_Video_01_AdobeStock-485729361.mp4"
+  }
+}
+\`\`\`
+
+## PLATFORM-SPECIFIC SEARCH OPTIMIZATION
+
+### Adobe Stock:
+- Use quotes for exact phrases: "personal trainer"
+- Use + for required terms: fitness +gym +training
+- Add quality modifiers: 4K, cinematic, professional
+- Consider "Similar" feature suggestions
+
+### Artlist:
+- Simple keyword searches
+- Use mood/genre filters heavily
+- Combine multiple filter categories
+- Check BPM for music
+
+### Storyblocks:
+- Natural language phrases
+- Add "4K" or "HD" to prioritize quality
+- Include action words (walking, working, smiling)
+
+### Envato Elements:
+- Category browsing often better than search
+- Very specific terms for better results
+- Check both "Stock Video" and "Video Templates"
+
+## WHEN TO USE STOCK VS AI
+
+Include this decision context in your analysis:
+
+**Use Stock For:**
+- Generic B-roll (office scenes, cityscapes, nature, people working)
+- Industry-standard footage (gym equipment, restaurant interiors, retail stores)
+- Background music and ambient audio
+- Abstract motion graphics and transitions
+- Lifestyle footage (people using phones, meeting, celebrating)
+
+**Use AI Generation For:**
+- Highly specific custom imagery (unique product visualizations)
+- Stylized illustrations matching exact brand aesthetic
+- Impossible-to-find niche concepts
+- Custom animated text with specific messaging
+- When stock search yields no good results
+
+Generate the complete Stock Library Search JSON now. Return ONLY valid JSON.`;
+
+// =============================================================================
 // HELPER FUNCTIONS
 // =============================================================================
 
@@ -775,6 +1072,19 @@ ${s3Data}
 Generate the complete Assembly Instructions now as a text document.`;
 }
 
+/**
+ * Build S6 prompt with S3 production package injected
+ */
+export function buildS6Prompt(s3Data: string): string {
+  return `${S6_GENERATION_INSTRUCTIONS}
+
+## S3 VIDEO PRODUCTION PACKAGE
+
+${s3Data}
+
+Generate the complete Stock Library Search JSON now. Return ONLY valid JSON.`;
+}
+
 // =============================================================================
 // STAGE METADATA (for UI display)
 // =============================================================================
@@ -809,5 +1119,11 @@ export const STAGE_METADATA = {
     description: 'Combined S3 + S4 as professional PDF document',
     estimatedTime: '3-10 seconds (client-side)',
     icon: 'FileText',
+  },
+  s6: {
+    name: 'Stock Library Assets',
+    description: 'Convert AI prompts to stock search keywords for faster, cheaper asset sourcing',
+    estimatedTime: '30-45 seconds',
+    icon: 'Search',
   },
 };
