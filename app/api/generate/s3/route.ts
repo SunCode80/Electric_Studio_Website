@@ -62,21 +62,18 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Initialize Anthropic client with explicit authentication
-    const anthropic = new Anthropic({
-      apiKey: ANTHROPIC_API_KEY,
-      defaultHeaders: {
-        'anthropic-version': '2023-06-01',
-      },
-    });
-    
     // Build prompt
     const prompt = buildS3Prompt(
       typeof s2Data === 'string' ? s2Data : JSON.stringify(s2Data, null, 2)
     );
-    
+
     // Use streaming for S3 (long operation)
     const stream = await retryWithBackoff(async () => {
+      // Initialize Anthropic client inside the retry function
+      const anthropic = new Anthropic({
+        apiKey: ANTHROPIC_API_KEY,
+      });
+
       return anthropic.messages.stream({
         model: CLAUDE_MODEL,
         max_tokens: TOKEN_LIMITS.s3,

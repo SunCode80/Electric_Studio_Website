@@ -50,33 +50,30 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-    
+
     // Parse request body
     const body = await request.json();
     const { s1Data } = body;
-    
+
     if (!s1Data) {
       return NextResponse.json(
         { error: 'S1 data is required' },
         { status: 400 }
       );
     }
-    
-    // Initialize Anthropic client with explicit authentication
-    const anthropic = new Anthropic({
-      apiKey: ANTHROPIC_API_KEY,
-      defaultHeaders: {
-        'anthropic-version': '2023-06-01',
-      },
-    });
-    
+
     // Build prompt
     const prompt = buildS2Prompt(
       typeof s1Data === 'string' ? s1Data : JSON.stringify(s1Data, null, 2)
     );
-    
+
     // Generate S2 with retry logic
     const response = await retryWithBackoff(async () => {
+      // Initialize Anthropic client inside the retry function
+      const anthropic = new Anthropic({
+        apiKey: ANTHROPIC_API_KEY,
+      });
+
       return anthropic.messages.create({
         model: CLAUDE_MODEL,
         max_tokens: TOKEN_LIMITS.s2,
@@ -86,29 +83,29 @@ export async function POST(request: NextRequest) {
         }]
       });
     }, 3, 2000);
-    
+
     // Extract text content
     const textContent = response.content.find(block => block.type === 'text');
-    
+
     if (!textContent || textContent.type !== 'text') {
       return NextResponse.json(
         { error: 'No text content in response' },
         { status: 500 }
       );
     }
-    
+
     return NextResponse.json({
       success: true,
       output: textContent.text,
       usage: response.usage,
     });
-    
+
   } catch (error) {
     console.error('S2 generation error:', error);
     return NextResponse.json(
-      { 
-        error: 'S2 generation failed', 
-        details: error instanceof Error ? error.message : 'Unknown error' 
+      {
+        error: 'S2 generation failed',
+        details: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }
     );
