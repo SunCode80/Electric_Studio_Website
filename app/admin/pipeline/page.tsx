@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, CheckCircle, AlertCircle, Play, Download, Copy, ExternalLink } from 'lucide-react';
+import { Loader2, CheckCircle, AlertCircle, Play, Download, Copy, ExternalLink, Upload, RotateCcw } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { supabase } from '@/lib/supabase/client';
 import { generateS6ComprehensivePDF, downloadPDFBlob, extractBusinessName } from '@/lib/pdfGenerator';
 
@@ -48,6 +49,16 @@ export default function PipelinePage() {
   });
   const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
   const [copiedText, setCopiedText] = useState<string | null>(null);
+  const [clearModalOpen, setClearModalOpen] = useState(false);
+  const [stageToClear, setStageToClear] = useState<string | null>(null);
+  const [isClearing, setIsClearing] = useState(false);
+  const fileInputRefs = {
+    s2: useState<HTMLInputElement | null>(null)[0],
+    s3: useState<HTMLInputElement | null>(null)[0],
+    s4: useState<HTMLInputElement | null>(null)[0],
+    s5: useState<HTMLInputElement | null>(null)[0],
+    s6: useState<HTMLInputElement | null>(null)[0],
+  };
 
   const loadSubmission = async (id: string) => {
     try {
@@ -379,6 +390,85 @@ export default function PipelinePage() {
     }
   };
 
+  const handleClearStageClick = (stage: string) => {
+    setStageToClear(stage);
+    setClearModalOpen(true);
+  };
+
+  const handleClearConfirm = async () => {
+    if (!stageToClear || !submissionId) return;
+
+    setIsClearing(true);
+    try {
+      const response = await fetch(`/api/projects/${submissionId}/clear-stage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stage: stageToClear }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to clear stage');
+      }
+
+      await loadSubmission(submissionId);
+      setClearModalOpen(false);
+      setStageToClear(null);
+    } catch (error) {
+      console.error('Error clearing stage:', error);
+      alert('Failed to clear stage');
+    } finally {
+      setIsClearing(false);
+    }
+  };
+
+  const handleCustomUpload = async (e: React.ChangeEvent<HTMLInputElement>, stage: string) => {
+    const file = e.target.files?.[0];
+    if (!file || !submissionId) return;
+
+    try {
+      const text = await file.text();
+
+      let cleaned = cleanMarkdownCodeFences(text);
+
+      if (['s2', 's3', 's5'].includes(stage)) {
+        try {
+          JSON.parse(cleaned);
+        } catch {
+          alert('Invalid JSON format. Please check your file.');
+          return;
+        }
+      }
+
+      const response = await fetch(`/api/projects/${submissionId}/upload-stage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stage, content: cleaned }),
+      });
+
+      if (!response.ok) throw new Error('Upload failed');
+
+      await loadSubmission(submissionId);
+      alert(`${stage.toUpperCase()} updated successfully`);
+
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      alert('Failed to upload file');
+    }
+
+    e.target.value = '';
+  };
+
+  const getDownstreamStages = (stage: string): string[] => {
+    const stageMap: Record<string, string[]> = {
+      's2': ['S3', 'S4', 'S5', 'S6'],
+      's3': ['S4', 'S5', 'S6'],
+      's4': ['S5', 'S6'],
+      's5': ['S6'],
+      's6': [],
+    };
+    return stageMap[stage] || [];
+  };
+
   const getStatusIcon = (status: StageStatus) => {
     switch (status) {
       case 'completed':
@@ -639,7 +729,7 @@ export default function PipelinePage() {
                       </CardDescription>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-3">
+                  <div className="flex items-center space-x-2">
                     {getStatusBadge(stageInfo.status)}
                     {stage !== 'S1' && (
                       <>
@@ -669,6 +759,32 @@ export default function PipelinePage() {
                           >
                             <Download className="w-4 h-4" />
                             <span className="ml-2">Download</span>
+                          </Button>
+                        )}
+                        <input
+                          type="file"
+                          accept=".txt,.json"
+                          onChange={(e) => handleCustomUpload(e, stage.toLowerCase())}
+                          className="hidden"
+                          id={`upload-${stage}`}
+                        />
+                        <Button
+                          onClick={() => document.getElementById(`upload-${stage}`)?.click()}
+                          variant="outline"
+                          size="sm"
+                          title="Upload custom file"
+                        >
+                          <Upload className="w-4 h-4" />
+                        </Button>
+                        {stageInfo.status === 'completed' && (
+                          <Button
+                            onClick={() => handleClearStageClick(stage.toLowerCase())}
+                            variant="outline"
+                            size="sm"
+                            className="text-orange-600 hover:text-orange-700"
+                            title="Clear stage data"
+                          >
+                            <RotateCcw className="w-4 h-4" />
                           </Button>
                         )}
                       </>
@@ -711,6 +827,62 @@ export default function PipelinePage() {
           );
         })}
       </div>
+
+      <AlertDialog open={clearModalOpen} onOpenChange={setClearModalOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-orange-500" />
+              Clear {stageToClear?.toUpperCase()} Data?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              <div className="space-y-3">
+                <p>
+                  This will clear the data for {stageToClear?.toUpperCase()} and all downstream stages.
+                </p>
+                {stageToClear && getDownstreamStages(stageToClear).length > 0 && (
+                  <div>
+                    <p className="font-medium text-gray-900 mb-2">The following stages will also be cleared:</p>
+                    <ul className="list-disc list-inside space-y-1 text-sm">
+                      {getDownstreamStages(stageToClear).map(stage => (
+                        <li key={stage}>
+                          {stage} ({
+                            stage === 'S2' ? 'Presentation' :
+                            stage === 'S3' ? 'Video Production Package' :
+                            stage === 'S4' ? 'Assembly Instructions' :
+                            stage === 'S5' ? 'Stock Library Assets' :
+                            'Complete Production Bible'
+                          })
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                <p className="text-sm text-gray-600">
+                  You can regenerate or upload a custom file after clearing.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isClearing}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleClearConfirm}
+              disabled={isClearing}
+              className="bg-orange-600 hover:bg-orange-700"
+            >
+              {isClearing ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Clearing...
+                </>
+              ) : (
+                'Clear Stage'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
