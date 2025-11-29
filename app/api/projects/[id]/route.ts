@@ -1,12 +1,21 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { NextRequest, NextResponse } from 'next/server';
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    console.log('DELETE request received for project:', params.id);
+    const { id } = await params;
+
+    console.log('DELETE request received for project:', id);
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Project ID is required' },
+        { status: 400 }
+      );
+    }
 
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
       console.error('Missing Supabase environment variables');
@@ -27,19 +36,10 @@ export async function DELETE(
       }
     );
 
-    const projectId = params.id;
-
-    if (!projectId) {
-      return NextResponse.json(
-        { error: 'Project ID is required' },
-        { status: 400 }
-      );
-    }
-
     const { data: project, error: fetchError } = await supabase
       .from('projects')
       .select('*')
-      .eq('id', projectId)
+      .eq('id', id)
       .maybeSingle();
 
     if (fetchError) {
@@ -51,7 +51,7 @@ export async function DELETE(
     }
 
     if (!project) {
-      console.log('Project not found:', projectId);
+      console.log('Project not found:', id);
       return NextResponse.json(
         { error: 'Project not found' },
         { status: 404 }
@@ -84,7 +84,7 @@ export async function DELETE(
     const { error: deleteError } = await supabase
       .from('projects')
       .delete()
-      .eq('id', projectId);
+      .eq('id', id);
 
     if (deleteError) {
       console.error('Error deleting project:', deleteError);
@@ -94,11 +94,11 @@ export async function DELETE(
       );
     }
 
-    console.log('Project deleted successfully:', projectId);
+    console.log('Project deleted successfully:', id);
     return NextResponse.json({
       success: true,
       message: 'Project deleted successfully',
-    });
+    }, { status: 200 });
   } catch (error: any) {
     console.error('Delete project exception:', error);
     return NextResponse.json(

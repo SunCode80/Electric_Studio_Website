@@ -109,6 +109,9 @@ export default function AdminDashboard() {
     try {
       const response = await fetch(`/api/projects/${projectToDelete.id}`, {
         method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
 
       const data = await response.json();
