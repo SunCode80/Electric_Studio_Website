@@ -13,7 +13,7 @@ export const TOKEN_LIMITS = {
   s2: 16000,  // Presentation output (JSON)
   s3: 32000,  // Production package (largest output - streaming)
   s4: 16000,  // Assembly instructions (streaming)
-  s6: 16000,  // Stock library search keywords (JSON)
+  s5: 16000,  // Stock library search keywords (JSON)
 };
 
 // =============================================================================
@@ -1075,7 +1075,7 @@ Generate the complete Assembly Instructions now as a text document.`;
 /**
  * Build S6 prompt with S3 production package injected
  */
-export function buildS6Prompt(s3Data: string): string {
+export function buildS5Prompt(s3Data: string): string {
   return `${S6_GENERATION_INSTRUCTIONS}
 
 ## S3 VIDEO PRODUCTION PACKAGE

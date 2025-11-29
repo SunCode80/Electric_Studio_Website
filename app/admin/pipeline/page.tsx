@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, CheckCircle, AlertCircle, Play, Download, Copy, ExternalLink } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
-import { generateS5PDF, downloadPDFBlob, extractBusinessName } from '@/lib/pdfGenerator';
+import { generateS6ComprehensivePDF, downloadPDFBlob, extractBusinessName } from '@/lib/pdfGenerator';
 
 type PipelineStage = 'S1' | 'S2' | 'S3' | 'S4' | 'S5' | 'S6';
 type StageStatus = 'pending' | 'processing' | 'completed' | 'error';
@@ -47,8 +47,8 @@ export default function PipelinePage() {
         S2: { status: data.s2_presentation_data ? 'completed' : 'pending', data: data.s2_presentation_data },
         S3: { status: data.s3_video_production_data ? 'completed' : 'pending', data: data.s3_video_production_data },
         S4: { status: data.s4_assembly_data ? 'completed' : 'pending', data: data.s4_assembly_data },
-        S5: { status: 'pending', data: null },
-        S6: { status: data.s6_output ? 'completed' : 'pending', data: data.s6_output },
+        S5: { status: data.s5_output ? 'completed' : 'pending', data: data.s5_output },
+        S6: { status: 'pending', data: null },
       });
     } catch (error) {
       console.error('Error loading submission:', error);
@@ -177,7 +177,7 @@ export default function PipelinePage() {
     }
   };
 
-  const generateS6 = async () => {
+  const generateS5 = async () => {
     if (!submissionId) {
       alert('Please enter a submission ID first');
       return;
@@ -190,11 +190,11 @@ export default function PipelinePage() {
 
     setStages((prev) => ({
       ...prev,
-      S6: { ...prev.S6, status: 'processing', error: undefined, progress: 0 },
+      S5: { ...prev.S5, status: 'processing', error: undefined, progress: 0 },
     }));
 
     try {
-      const response = await fetch('/api/generate/s6', {
+      const response = await fetch('/api/generate/s5', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ s3Data: stages.S3.data }),
@@ -239,10 +239,10 @@ export default function PipelinePage() {
 
         setStages((prev) => ({
           ...prev,
-          S6: {
-            ...prev.S6,
+          S5: {
+            ...prev.S5,
             data: accumulatedText,
-            progress: Math.min((prev.S6.progress || 0) + 5, 90),
+            progress: Math.min((prev.S5.progress || 0) + 5, 90),
           },
         }));
       }
@@ -261,45 +261,46 @@ export default function PipelinePage() {
 
       setStages((prev) => ({
         ...prev,
-        S6: { status: 'completed', data: parsedData, progress: 100 },
+        S5: { status: 'completed', data: parsedData, progress: 100 },
       }));
 
       await supabase
         .from('content_strategy_submissions')
-        .update({ s6_output: parsedData })
+        .update({ s5_output: parsedData })
         .eq('id', submissionId);
 
     } catch (error: any) {
-      console.error('Error generating S6:', error);
+      console.error('Error generating S5:', error);
       setStages((prev) => ({
         ...prev,
-        S6: { ...prev.S6, status: 'error', error: error.message },
+        S5: { ...prev.S5, status: 'error', error: error.message },
       }));
     }
   };
 
-  const handleGenerateS5PDF = async () => {
-    if (!stages.S3.data || !stages.S4.data) {
-      alert('S3 and S4 must be completed first');
+  const handleGenerateS6PDF = async () => {
+    if (!stages.S3.data || !stages.S4.data || !stages.S5.data) {
+      alert('S3, S4, and S5 must be completed first');
       return;
     }
 
     setStages((prev) => ({
       ...prev,
-      S5: { status: 'processing', data: null, progress: 0 },
+      S6: { status: 'processing', data: null, progress: 0 },
     }));
 
     try {
       const businessName = extractBusinessName(stages.S3.data);
 
-      const blob = await generateS5PDF(
+      const blob = await generateS6ComprehensivePDF(
         stages.S3.data,
         stages.S4.data,
+        stages.S5.data,
         { businessName },
         (progress) => {
           setStages((prev) => ({
             ...prev,
-            S5: { ...prev.S5, progress },
+            S6: { ...prev.S6, progress },
           }));
         }
       );
@@ -308,26 +309,26 @@ export default function PipelinePage() {
 
       setStages((prev) => ({
         ...prev,
-        S5: { status: 'completed', data: 'PDF Generated Successfully', progress: 100 },
+        S6: { status: 'completed', data: 'Comprehensive PDF Generated Successfully', progress: 100 },
       }));
 
     } catch (error: any) {
-      console.error('Error generating S5 PDF:', error);
+      console.error('Error generating S6 PDF:', error);
       setStages((prev) => ({
         ...prev,
-        S5: { ...prev.S5, status: 'error', error: error.message },
+        S6: { ...prev.S6, status: 'error', error: error.message },
       }));
     }
   };
 
-  const downloadS5PDF = () => {
+  const downloadS6PDF = () => {
     if (!pdfBlob) {
       alert('PDF not generated yet');
       return;
     }
 
     const businessName = extractBusinessName(stages.S3.data || '');
-    const filename = `${businessName.replace(/\s+/g, '_')}_Production_Guide.pdf`;
+    const filename = `${businessName.replace(/\s+/g, '_')}_Complete_Production_Bible.pdf`;
     downloadPDFBlob(pdfBlob, filename);
   };
 
@@ -382,7 +383,7 @@ export default function PipelinePage() {
     );
   };
 
-  const renderS6Output = (data: any) => {
+  const renderS5Output = (data: any) => {
     if (!data || typeof data === 'string') {
       return (
         <div className="bg-gray-50 rounded-md p-4 max-h-96 overflow-auto">
@@ -586,8 +587,8 @@ export default function PipelinePage() {
             stage === 'S2' ? stages.S1.status === 'completed' :
             stage === 'S3' ? stages.S2.status === 'completed' :
             stage === 'S4' ? stages.S3.status === 'completed' :
-            stage === 'S5' ? stages.S4.status === 'completed' && stages.S3.status === 'completed' :
-            stages.S3.status === 'completed';
+            stage === 'S5' ? stages.S3.status === 'completed' :
+            stages.S3.status === 'completed' && stages.S4.status === 'completed' && stages.S5.status === 'completed';
 
           return (
             <Card key={stage}>
@@ -601,16 +602,16 @@ export default function PipelinePage() {
                         stage === 'S2' ? 'Presentation' :
                         stage === 'S3' ? 'Video Production Package' :
                         stage === 'S4' ? 'Assembly Instructions' :
-                        stage === 'S5' ? 'Master PDF Guide' :
-                        'Stock Library Assets'
+                        stage === 'S5' ? 'Stock Library Assets' :
+                        'Complete Production Bible'
                       }</CardTitle>
                       <CardDescription className="mt-1">
                         {stage === 'S1' ? 'Client survey responses' :
                          stage === 'S2' ? 'Strategic video presentation (JSON response)' :
                          stage === 'S3' ? 'Complete asset list with AI prompts (streaming)' :
                          stage === 'S4' ? 'Step-by-step assembly guide (streaming)' :
-                         stage === 'S5' ? 'Combined S3 + S4 as PDF (client-side)' :
-                         'Convert AI prompts to stock search keywords'}
+                         stage === 'S5' ? 'Convert AI prompts to stock search keywords (JSON)' :
+                         'Combined S3 + S4 + S5 as comprehensive PDF'}
                       </CardDescription>
                     </div>
                   </div>
@@ -623,8 +624,8 @@ export default function PipelinePage() {
                             stage === 'S2' ? generateS2 :
                             stage === 'S3' ? () => generateStreamingStage('S3') :
                             stage === 'S4' ? () => generateStreamingStage('S4') :
-                            stage === 'S5' ? handleGenerateS5PDF :
-                            generateS6
+                            stage === 'S5' ? generateS5 :
+                            handleGenerateS6PDF
                           }
                           disabled={!canGenerate || stageInfo.status === 'processing'}
                           size="sm"
@@ -634,11 +635,11 @@ export default function PipelinePage() {
                           ) : (
                             <Play className="w-4 h-4" />
                           )}
-                          <span className="ml-2">{stage === 'S5' ? 'Generate PDF' : 'Generate'}</span>
+                          <span className="ml-2">{stage === 'S6' ? 'Generate PDF' : 'Generate'}</span>
                         </Button>
-                        {stage === 'S5' && stageInfo.status === 'completed' && pdfBlob && (
+                        {stage === 'S6' && stageInfo.status === 'completed' && pdfBlob && (
                           <Button
-                            onClick={downloadS5PDF}
+                            onClick={downloadS6PDF}
                             variant="outline"
                             size="sm"
                           >
@@ -670,7 +671,7 @@ export default function PipelinePage() {
                     </div>
                   )}
                   {stageInfo.data && (
-                    stage === 'S6' ? renderS6Output(stageInfo.data) : (
+                    stage === 'S5' ? renderS5Output(stageInfo.data) : (
                       <div className="bg-gray-50 rounded-md p-4 max-h-96 overflow-auto">
                         <pre className="text-xs text-gray-700 whitespace-pre-wrap">
                           {typeof stageInfo.data === 'string'

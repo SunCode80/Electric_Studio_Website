@@ -391,13 +391,344 @@ export function extractBusinessName(s3Content: string): string {
     /^#\s*(.+?)(?:\n|$)/m,
     /Prepared for:\s*(.+?)(?:\n|$)/i,
   ];
-  
+
   for (const pattern of patterns) {
     const match = s3Content.match(pattern);
     if (match && match[1]) {
       return match[1].trim().slice(0, 50);
     }
   }
-  
+
   return 'Client';
+}
+
+/**
+ * Generate comprehensive S6 Master PDF combining S3, S4, and S5
+ *
+ * @param s3Content - The S3 Video Production Package content
+ * @param s4Content - The S4 Assembly Instructions content
+ * @param s5Data - The S5 Stock Library Search Keywords (JSON)
+ * @param options - PDF generation options
+ * @param onProgress - Progress callback (0-100)
+ * @returns PDF as Blob
+ */
+export async function generateS6ComprehensivePDF(
+  s3Content: string,
+  s4Content: string,
+  s5Data: any,
+  options?: Partial<PDFOptions>,
+  onProgress?: (progress: number) => void
+): Promise<Blob> {
+  const opts = { ...DEFAULT_OPTIONS, ...options };
+  opts.title = 'Complete Production Bible';
+
+  if (onProgress) onProgress(5);
+
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'pt',
+    format: 'letter',
+  });
+
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 50;
+  const maxWidth = pageWidth - margin * 2;
+  const lineHeight = opts.fontSize! * opts.lineSpacing!;
+
+  let currentY = margin;
+  let pageNumber = 1;
+
+  function addNewPage() {
+    if (opts.addPageNumbers) {
+      doc.setFontSize(8);
+      doc.setTextColor(150, 150, 150);
+      doc.text(`Page ${pageNumber}`, pageWidth / 2, pageHeight - 30, { align: 'center' });
+    }
+
+    doc.addPage();
+    pageNumber++;
+    currentY = margin;
+
+    if (opts.addHeader) {
+      doc.setFontSize(8);
+      doc.setTextColor(150, 150, 150);
+      doc.text('⚡ ELECTRIC STUDIO', margin, 30);
+      if (opts.title) {
+        doc.text(opts.title, pageWidth - margin, 30, { align: 'right' });
+      }
+      currentY = margin + 20;
+    }
+  }
+
+  function addCoverPage() {
+    doc.setFillColor(124, 58, 237);
+    doc.rect(0, 0, pageWidth, 150, 'F');
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(24);
+    doc.setFont('helvetica', 'bold');
+    doc.text('⚡ ELECTRIC STUDIO', pageWidth / 2, 60, { align: 'center' });
+
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Complete Video Production Bible', pageWidth / 2, 85, { align: 'center' });
+
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(28);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Production Guide', pageWidth / 2, 220, { align: 'center' });
+
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 100, 100);
+    doc.text(`Prepared for: ${opts.businessName}`, pageWidth / 2, 260, { align: 'center' });
+
+    doc.setFontSize(12);
+    doc.text(`Generated: ${new Date().toLocaleDateString()}`, pageWidth / 2, 290, { align: 'center' });
+
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Complete Package Includes', pageWidth / 2, 380, { align: 'center' });
+
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(80, 80, 80);
+    const contents = [
+      'Section 1: Master Script & Asset List',
+      'Section 2: Assembly Instructions',
+      'Section 3: Stock Library Search Guide',
+      'Section 4: Download Checklist',
+      'Section 5: File Organization',
+    ];
+
+    let contentY = 410;
+    for (const item of contents) {
+      doc.text(item, pageWidth / 2, contentY, { align: 'center' });
+      contentY += 20;
+    }
+
+    doc.setFontSize(10);
+    doc.setTextColor(150, 150, 150);
+    doc.text('Everything you need to produce this video', pageWidth / 2, pageHeight - 50, { align: 'center' });
+  }
+
+  addCoverPage();
+
+  if (onProgress) onProgress(10);
+
+  doc.addPage();
+  pageNumber = 2;
+  currentY = margin;
+
+  doc.setFillColor(34, 197, 94);
+  doc.rect(0, 0, pageWidth, 60, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(20);
+  doc.setFont('helvetica', 'bold');
+  doc.text('SECTION 1: PRODUCTION PACKAGE', pageWidth / 2, 38, { align: 'center' });
+
+  currentY = 100;
+
+  const s3Lines = s3Content.split('\n');
+  const totalLines = s3Lines.length + s4Content.split('\n').length;
+  let processedLines = 0;
+
+  for (const line of s3Lines) {
+    processedLines++;
+
+    if (processedLines % 50 === 0 && onProgress) {
+      const progress = 10 + Math.round((processedLines / totalLines) * 30);
+      onProgress(Math.min(progress, 40));
+    }
+
+    const isHeader = detectHeader(line);
+    const isAssetName = detectAssetName(line);
+    const isSeparator = detectSeparator(line);
+
+    if (isSeparator) {
+      currentY += lineHeight * 0.5;
+      continue;
+    } else if (isHeader) {
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(opts.fontSize! + 2);
+      doc.setTextColor(34, 197, 94);
+      currentY += 8;
+    } else if (isAssetName) {
+      doc.setFont('courier', 'normal');
+      doc.setFontSize(opts.fontSize!);
+      doc.setTextColor(59, 130, 246);
+    } else {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(opts.fontSize!);
+      doc.setTextColor(0, 0, 0);
+    }
+
+    const textLines = doc.splitTextToSize(line || ' ', maxWidth);
+
+    for (const textLine of textLines) {
+      if (currentY + lineHeight > pageHeight - 60) {
+        addNewPage();
+      }
+
+      doc.text(textLine, margin, currentY);
+      currentY += lineHeight;
+    }
+
+    if (isHeader) {
+      currentY += 4;
+    }
+  }
+
+  if (onProgress) onProgress(40);
+
+  doc.addPage();
+  pageNumber++;
+  currentY = margin;
+
+  doc.setFillColor(249, 115, 22);
+  doc.rect(0, 0, pageWidth, 60, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(20);
+  doc.setFont('helvetica', 'bold');
+  doc.text('SECTION 2: ASSEMBLY INSTRUCTIONS', pageWidth / 2, 38, { align: 'center' });
+
+  currentY = 100;
+
+  const s4Lines = s4Content.split('\n');
+
+  for (const line of s4Lines) {
+    processedLines++;
+
+    if (processedLines % 50 === 0 && onProgress) {
+      const progress = 40 + Math.round(((processedLines - s3Lines.length) / s4Lines.length) * 30);
+      onProgress(Math.min(progress, 70));
+    }
+
+    const isHeader = detectHeader(line);
+    const isAssetName = detectAssetName(line);
+    const isSeparator = detectSeparator(line);
+
+    if (isSeparator) {
+      currentY += lineHeight * 0.5;
+      continue;
+    } else if (isHeader) {
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(opts.fontSize! + 2);
+      doc.setTextColor(249, 115, 22);
+      currentY += 8;
+    } else if (isAssetName) {
+      doc.setFont('courier', 'normal');
+      doc.setFontSize(opts.fontSize!);
+      doc.setTextColor(59, 130, 246);
+    } else {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(opts.fontSize!);
+      doc.setTextColor(0, 0, 0);
+    }
+
+    const textLines = doc.splitTextToSize(line || ' ', maxWidth);
+
+    for (const textLine of textLines) {
+      if (currentY + lineHeight > pageHeight - 60) {
+        addNewPage();
+      }
+
+      doc.text(textLine, margin, currentY);
+      currentY += lineHeight;
+    }
+
+    if (isHeader) {
+      currentY += 4;
+    }
+  }
+
+  if (onProgress) onProgress(70);
+
+  doc.addPage();
+  pageNumber++;
+  currentY = margin;
+
+  doc.setFillColor(124, 58, 237);
+  doc.rect(0, 0, pageWidth, 60, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(20);
+  doc.setFont('helvetica', 'bold');
+  doc.text('SECTION 3: STOCK LIBRARY SEARCH GUIDE', pageWidth / 2, 38, { align: 'center' });
+
+  currentY = 100;
+
+  if (s5Data && s5Data.assets) {
+    for (const asset of s5Data.assets) {
+      if (currentY + 200 > pageHeight - 60) {
+        addNewPage();
+      }
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(opts.fontSize! + 3);
+      doc.setTextColor(124, 58, 237);
+      doc.text(asset.assetName || 'Asset', margin, currentY);
+      currentY += lineHeight * 1.5;
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(opts.fontSize!);
+      doc.setTextColor(0, 0, 0);
+
+      const platforms = ['adobeStock', 'artlist', 'storyblocks', 'envatoElements'];
+      for (const platform of platforms) {
+        if (asset.searches && asset.searches[platform] && asset.searches[platform].length > 0) {
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(80, 80, 80);
+          const platformName = platform.replace(/([A-Z])/g, ' $1').trim().toUpperCase();
+          doc.text(`${platformName}:`, margin, currentY);
+          currentY += lineHeight;
+
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(0, 0, 0);
+          for (const search of asset.searches[platform].slice(0, 3)) {
+            doc.text(`  • ${search}`, margin, currentY);
+            currentY += lineHeight;
+          }
+          currentY += lineHeight * 0.5;
+        }
+      }
+
+      if (asset.selectionCriteria && asset.selectionCriteria.length > 0) {
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(80, 80, 80);
+        doc.text('SELECTION CRITERIA:', margin, currentY);
+        currentY += lineHeight;
+
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(0, 0, 0);
+        for (const criteria of asset.selectionCriteria.slice(0, 3)) {
+          const lines = doc.splitTextToSize(`  ✓ ${criteria}`, maxWidth);
+          for (const line of lines) {
+            if (currentY + lineHeight > pageHeight - 60) {
+              addNewPage();
+            }
+            doc.text(line, margin, currentY);
+            currentY += lineHeight;
+          }
+        }
+      }
+
+      currentY += lineHeight * 2;
+    }
+  }
+
+  if (opts.addPageNumbers) {
+    doc.setFontSize(8);
+    doc.setTextColor(150, 150, 150);
+    doc.text(`Page ${pageNumber}`, pageWidth / 2, pageHeight - 30, { align: 'center' });
+  }
+
+  if (onProgress) onProgress(95);
+
+  const pdfBlob = doc.output('blob');
+
+  if (onProgress) onProgress(100);
+
+  return pdfBlob;
 }

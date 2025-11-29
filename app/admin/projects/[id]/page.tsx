@@ -10,7 +10,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { getProject, downloadStageFile, updateProjectStage, uploadStageFile } from '@/lib/api/projects';
 import { Project } from '@/lib/types/project';
 import { toast } from 'sonner';
-import { generateS5PDF, extractBusinessName } from '@/lib/pdfGenerator';
+import { generateS6ComprehensivePDF, extractBusinessName } from '@/lib/pdfGenerator';
 import { supabase } from '@/lib/supabase/client';
 
 export default function ProjectPipelinePage() {
@@ -57,11 +57,11 @@ export default function ProjectPipelinePage() {
         if (!s3Content) throw new Error('S3 data not found');
         payload = { s3Data: s3Content };
         endpoint = '/api/generate/s4';
-      } else if (stage === 6) {
+      } else if (stage === 5) {
         const s3Content = await downloadStageFile(projectId, 3);
         if (!s3Content) throw new Error('S3 data not found');
         payload = { s3Data: s3Content };
-        endpoint = '/api/generate/s6';
+        endpoint = '/api/generate/s5';
       }
 
       const response = await fetch(endpoint, {
@@ -80,7 +80,7 @@ export default function ProjectPipelinePage() {
       if (stage === 2) {
         const result = await response.json();
         output = result.output;
-      } else if (stage === 6) {
+      } else if (stage === 5) {
         if (!response.body) {
           throw new Error('No response body');
         }
@@ -151,37 +151,45 @@ export default function ProjectPipelinePage() {
     }
   }
 
-  async function handleGenerateS5() {
+  async function handleGenerateS6() {
     if (!project) return;
 
-    setGeneratingStage(5);
-    toast.info('Generating PDF...');
+    setGeneratingStage(6);
+    toast.info('Generating Comprehensive PDF...');
 
     try {
       const s3Content = await downloadStageFile(projectId, 3);
       const s4Content = await downloadStageFile(projectId, 4);
+      const s5Content = await downloadStageFile(projectId, 5);
 
-      if (!s3Content || !s4Content) {
-        throw new Error('S3 or S4 data not found');
+      if (!s3Content || !s4Content || !s5Content) {
+        throw new Error('S3, S4, and S5 data must all be completed first');
+      }
+
+      let s5Data;
+      try {
+        s5Data = JSON.parse(s5Content);
+      } catch (e) {
+        throw new Error('S5 data is not valid JSON');
       }
 
       const businessName = extractBusinessName(s3Content);
-      const pdfBlob = await generateS5PDF(s3Content, s4Content, { businessName });
+      const pdfBlob = await generateS6ComprehensivePDF(s3Content, s4Content, s5Data, { businessName });
 
-      const file = new File([pdfBlob], `${project.client_name}-Final-Presentation.pdf`, {
+      const file = new File([pdfBlob], `${project.client_name}-Complete-Production-Bible.pdf`, {
         type: 'application/pdf',
       });
 
-      const filePath = await uploadStageFile(projectId, 5, file, 'pdf');
+      const filePath = await uploadStageFile(projectId, 6, file, 'pdf');
       if (!filePath) throw new Error('Failed to upload PDF');
 
-      await updateProjectStage(projectId, 5, {
+      await updateProjectStage(projectId, 6, {
         completed: true,
         filePath,
         generatedAt: new Date().toISOString(),
       });
 
-      toast.success('PDF generated successfully!');
+      toast.success('Comprehensive PDF generated successfully!');
       await loadProject();
     } catch (error: any) {
       console.error('PDF generation error:', error);
@@ -193,7 +201,7 @@ export default function ProjectPipelinePage() {
 
   async function handleDownload(stage: number) {
     try {
-      if (stage === 5) {
+      if (stage === 6) {
         const filePath = (project as any)[`s${stage}_file_path`];
         if (!filePath) {
           toast.error('File not found');
@@ -268,14 +276,14 @@ export default function ProjectPipelinePage() {
     },
     {
       id: 5,
-      name: 'Final PDF (S5)',
-      description: 'Complete presentation PDF document',
+      name: 'Stock Library Assets (S5)',
+      description: 'Convert AI prompts to stock search keywords',
       canGenerate: true,
     },
     {
       id: 6,
-      name: 'Stock Library Assets (S6)',
-      description: 'Convert AI prompts to stock search keywords',
+      name: 'Complete Production Bible (S6)',
+      description: 'Comprehensive PDF combining S3, S4, and S5',
       canGenerate: true,
     },
   ];
@@ -303,8 +311,12 @@ export default function ProjectPipelinePage() {
     if (generatingStage === stageId) return 'generating';
 
     // S6 requires S3 to be completed (not S5)
-    if (stageId === 6) {
+    if (stageId === 5) {
       return project.s3_completed ? 'ready' : 'locked';
+    }
+
+    if (stageId === 6) {
+      return (project.s3_completed && project.s4_completed && project.s5_completed) ? 'ready' : 'locked';
     }
 
     const prevCompleted = stageId === 1 || (project as any)[`s${stageId - 1}_completed`];
@@ -418,11 +430,11 @@ export default function ProjectPipelinePage() {
                   {stage.canGenerate && status === 'ready' && (
                     <Button
                       size="sm"
-                      onClick={() => stage.id === 5 ? handleGenerateS5() : handleGenerate(stage.id)}
+                      onClick={() => stage.id === 6 ? handleGenerateS6() : handleGenerate(stage.id)}
                       disabled={generatingStage !== null}
                     >
                       <Play className="w-4 h-4 mr-2" />
-                      {stage.id === 5 ? 'Generate PDF' : 'Generate'}
+                      {stage.id === 6 ? 'Generate PDF' : 'Generate'}
                     </Button>
                   )}
                   {status === 'generating' && (
