@@ -166,10 +166,27 @@ export default function ProjectPipelinePage() {
         throw new Error('S3, S4, and S5 data must all be completed first');
       }
 
+      const cleanS5Content = s5Content.trim();
+      let cleanedS5 = cleanS5Content;
+
+      if (cleanedS5.startsWith('```json')) {
+        cleanedS5 = cleanedS5.slice(7);
+      } else if (cleanedS5.startsWith('```')) {
+        cleanedS5 = cleanedS5.slice(3);
+      }
+
+      if (cleanedS5.endsWith('```')) {
+        cleanedS5 = cleanedS5.slice(0, -3);
+      }
+
+      cleanedS5 = cleanedS5.trim();
+
       let s5Data;
       try {
-        s5Data = JSON.parse(s5Content);
+        s5Data = JSON.parse(cleanedS5);
       } catch (e) {
+        console.error('Failed to parse S5 JSON:', e);
+        console.log('S5 content:', cleanedS5.substring(0, 500));
         throw new Error('S5 data is not valid JSON');
       }
 

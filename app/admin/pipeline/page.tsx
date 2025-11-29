@@ -18,6 +18,24 @@ interface StageState {
   progress?: number;
 }
 
+const cleanMarkdownCodeFences = (text: string): string => {
+  if (!text || typeof text !== 'string') return text;
+
+  let cleaned = text.trim();
+
+  if (cleaned.startsWith('```json')) {
+    cleaned = cleaned.slice(7);
+  } else if (cleaned.startsWith('```')) {
+    cleaned = cleaned.slice(3);
+  }
+
+  if (cleaned.endsWith('```')) {
+    cleaned = cleaned.slice(0, -3);
+  }
+
+  return cleaned.trim();
+};
+
 export default function PipelinePage() {
   const [submissionId, setSubmissionId] = useState<string>('');
   const [stages, setStages] = useState<Record<PipelineStage, StageState>>({
@@ -44,9 +62,9 @@ export default function PipelinePage() {
 
       setStages({
         S1: { status: 'completed', data: data.survey_data },
-        S2: { status: data.s2_presentation_data ? 'completed' : 'pending', data: data.s2_presentation_data },
-        S3: { status: data.s3_video_production_data ? 'completed' : 'pending', data: data.s3_video_production_data },
-        S4: { status: data.s4_assembly_data ? 'completed' : 'pending', data: data.s4_assembly_data },
+        S2: { status: data.s2_presentation_data ? 'completed' : 'pending', data: data.s2_presentation_data ? cleanMarkdownCodeFences(data.s2_presentation_data) : null },
+        S3: { status: data.s3_video_production_data ? 'completed' : 'pending', data: data.s3_video_production_data ? cleanMarkdownCodeFences(data.s3_video_production_data) : null },
+        S4: { status: data.s4_assembly_data ? 'completed' : 'pending', data: data.s4_assembly_data ? cleanMarkdownCodeFences(data.s4_assembly_data) : null },
         S5: { status: data.s5_output ? 'completed' : 'pending', data: data.s5_output },
         S6: { status: 'pending', data: null },
       });
@@ -87,14 +105,16 @@ export default function PipelinePage() {
         throw new Error('Invalid response from API');
       }
 
+      const cleanedOutput = cleanMarkdownCodeFences(result.output);
+
       setStages((prev) => ({
         ...prev,
-        S2: { status: 'completed', data: result.output, progress: 100 },
+        S2: { status: 'completed', data: cleanedOutput, progress: 100 },
       }));
 
       await supabase
         .from('content_strategy_submissions')
-        .update({ s2_presentation_data: result.output })
+        .update({ s2_presentation_data: cleanedOutput })
         .eq('id', submissionId);
 
     } catch (error: any) {
@@ -156,16 +176,18 @@ export default function PipelinePage() {
         }));
       }
 
+      const cleanedText = cleanMarkdownCodeFences(accumulatedText);
+
       setStages((prev) => ({
         ...prev,
-        [stage]: { status: 'completed', data: accumulatedText, progress: 100 },
+        [stage]: { status: 'completed', data: cleanedText, progress: 100 },
       }));
 
       const updateField = stage === 'S3' ? 's3_video_production_data' : 's4_assembly_data';
 
       await supabase
         .from('content_strategy_submissions')
-        .update({ [updateField]: accumulatedText })
+        .update({ [updateField]: cleanedText })
         .eq('id', submissionId);
 
     } catch (error: any) {
@@ -247,16 +269,18 @@ export default function PipelinePage() {
         }));
       }
 
+      const cleanedText = cleanMarkdownCodeFences(accumulatedText);
+
       let parsedData: any;
       try {
-        const jsonMatch = accumulatedText.match(/\{[\s\S]*\}/);
+        const jsonMatch = cleanedText.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
           parsedData = JSON.parse(jsonMatch[0]);
         } else {
-          parsedData = accumulatedText;
+          parsedData = cleanedText;
         }
       } catch (e) {
-        parsedData = accumulatedText;
+        parsedData = cleanedText;
       }
 
       setStages((prev) => ({
