@@ -52,11 +52,41 @@ export async function createProject(
   }
 }
 
-export async function getProjects(): Promise<Project[]> {
-  const { data, error } = await supabase
-    .from('projects')
-    .select('*')
-    .order('created_at', { ascending: false });
+export interface ProjectFilters {
+  searchQuery?: string;
+  status?: 'all' | 'in_progress' | 'completed' | 'on_hold';
+  sortBy?: 'newest' | 'oldest' | 'name_asc' | 'name_desc';
+}
+
+export async function getProjects(filters?: ProjectFilters): Promise<Project[]> {
+  let query = supabase.from('projects').select('*');
+
+  if (filters?.searchQuery) {
+    const search = `%${filters.searchQuery}%`;
+    query = query.or(`client_name.ilike.${search},project_name.ilike.${search}`);
+  }
+
+  if (filters?.status && filters.status !== 'all') {
+    query = query.eq('status', filters.status);
+  }
+
+  switch (filters?.sortBy) {
+    case 'oldest':
+      query = query.order('created_at', { ascending: true });
+      break;
+    case 'name_asc':
+      query = query.order('client_name', { ascending: true });
+      break;
+    case 'name_desc':
+      query = query.order('client_name', { ascending: false });
+      break;
+    case 'newest':
+    default:
+      query = query.order('created_at', { ascending: false });
+      break;
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error('Error fetching projects:', error);
