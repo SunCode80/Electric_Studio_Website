@@ -97,12 +97,31 @@ export async function POST(request: NextRequest) {
       });
 
       if (!fetchResponse.ok) {
-        const errorData = await fetchResponse.json();
+        const errorData = await fetchResponse.json().catch(() => ({}));
         console.error('[S2] API error:', errorData);
-        throw new Error(`API error: ${JSON.stringify(errorData)}`);
+
+        if (fetchResponse.status === 401) {
+          throw new Error('BILLING_ERROR: Invalid API key. Please check your Anthropic API key.');
+        }
+
+        if (fetchResponse.status === 429) {
+          throw new Error('RATE_LIMIT: Too many requests. Please try again in a moment.');
+        }
+
+        if (fetchResponse.status === 402 || errorData?.error?.type === 'insufficient_quota') {
+          throw new Error('BILLING_ERROR: API credits exhausted. Please add credits at console.anthropic.com');
+        }
+
+        const errorMessage = errorData?.error?.message || JSON.stringify(errorData);
+        throw new Error(`API error: ${errorMessage}`);
       }
 
       const result = await fetchResponse.json();
+
+      if (!result || !result.content || result.content.length === 0) {
+        throw new Error('Empty response from Claude API');
+      }
+
       return result;
     }, 3, 2000);
 
@@ -134,10 +153,35 @@ export async function POST(request: NextRequest) {
       fullError: error,
     });
 
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+    if (errorMessage.includes('BILLING_ERROR')) {
+      return NextResponse.json(
+        {
+          error: 'API credits exhausted',
+          details: errorMessage.replace('BILLING_ERROR: ', ''),
+          userMessage: 'Your Claude API credits have been exhausted. Please add credits at console.anthropic.com to continue generating content.'
+        },
+        { status: 402 }
+      );
+    }
+
+    if (errorMessage.includes('RATE_LIMIT')) {
+      return NextResponse.json(
+        {
+          error: 'Rate limit exceeded',
+          details: errorMessage.replace('RATE_LIMIT: ', ''),
+          userMessage: 'Too many requests. Please wait a moment and try again.'
+        },
+        { status: 429 }
+      );
+    }
+
     return NextResponse.json(
       {
         error: 'S2 generation failed',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        details: errorMessage,
+        userMessage: 'Failed to generate presentation content. Please try again.'
       },
       { status: 500 }
     );

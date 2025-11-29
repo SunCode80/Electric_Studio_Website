@@ -91,8 +91,23 @@ export async function POST(request: NextRequest) {
           });
 
           if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(`API error: ${JSON.stringify(errorData)}`);
+            const errorData = await response.json().catch(() => ({}));
+            console.error('[S4] API error:', errorData);
+
+            if (response.status === 401) {
+              throw new Error('BILLING_ERROR: Invalid API key. Please check your Anthropic API key.');
+            }
+
+            if (response.status === 429) {
+              throw new Error('RATE_LIMIT: Too many requests. Please try again in a moment.');
+            }
+
+            if (response.status === 402 || errorData?.error?.type === 'insufficient_quota') {
+              throw new Error('BILLING_ERROR: API credits exhausted. Please add credits at console.anthropic.com');
+            }
+
+            const errorMessage = errorData?.error?.message || JSON.stringify(errorData);
+            throw new Error(`API error: ${errorMessage}`);
           }
 
           const reader = response.body?.getReader();
@@ -140,12 +155,26 @@ export async function POST(request: NextRequest) {
     
   } catch (error) {
     console.error('S4 generation error:', error);
+
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    let statusCode = 500;
+    let userMessage = 'Failed to generate assembly instructions. Please try again.';
+
+    if (errorMessage.includes('BILLING_ERROR')) {
+      statusCode = 402;
+      userMessage = 'Your Claude API credits have been exhausted. Please add credits at console.anthropic.com to continue generating content.';
+    } else if (errorMessage.includes('RATE_LIMIT')) {
+      statusCode = 429;
+      userMessage = 'Too many requests. Please wait a moment and try again.';
+    }
+
     return new Response(
-      JSON.stringify({ 
-        error: 'S4 generation failed', 
-        details: error instanceof Error ? error.message : 'Unknown error' 
+      JSON.stringify({
+        error: statusCode === 402 ? 'API credits exhausted' : statusCode === 429 ? 'Rate limit exceeded' : 'S4 generation failed',
+        details: errorMessage.replace('BILLING_ERROR: ', '').replace('RATE_LIMIT: ', ''),
+        userMessage
       }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
+      { status: statusCode, headers: { 'Content-Type': 'application/json' } }
     );
   }
 }
