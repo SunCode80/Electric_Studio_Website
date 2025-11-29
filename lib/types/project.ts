@@ -19,6 +19,9 @@ export interface Project {
   s5_completed: boolean;
   s5_file_path?: string;
   s5_generated_at?: string;
+  s6_completed: boolean;
+  s6_file_path?: string;
+  s6_generated_at?: string;
   notes?: string;
   created_at: string;
   updated_at: string;

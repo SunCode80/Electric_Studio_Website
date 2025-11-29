@@ -57,6 +57,11 @@ export default function ProjectPipelinePage() {
         if (!s3Content) throw new Error('S3 data not found');
         payload = { s3Data: s3Content };
         endpoint = '/api/generate/s4';
+      } else if (stage === 6) {
+        const s3Content = await downloadStageFile(projectId, 3);
+        if (!s3Content) throw new Error('S3 data not found');
+        payload = { s3Data: s3Content };
+        endpoint = '/api/generate/s6';
       }
 
       const response = await fetch(endpoint, {
@@ -75,6 +80,40 @@ export default function ProjectPipelinePage() {
       if (stage === 2) {
         const result = await response.json();
         output = result.output;
+      } else if (stage === 6) {
+        if (!response.body) {
+          throw new Error('No response body');
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let accumulatedText = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n');
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6);
+              if (data === '[DONE]') continue;
+
+              try {
+                const parsed = JSON.parse(data);
+                if (parsed.text) {
+                  accumulatedText += parsed.text;
+                }
+              } catch (e) {
+                // Ignore parse errors
+              }
+            }
+          }
+        }
+
+        output = accumulatedText;
       } else {
         if (!response.body) {
           throw new Error('No response body');
@@ -233,6 +272,12 @@ export default function ProjectPipelinePage() {
       description: 'Complete presentation PDF document',
       canGenerate: true,
     },
+    {
+      id: 6,
+      name: 'Stock Library Assets (S6)',
+      description: 'Convert AI prompts to stock search keywords',
+      canGenerate: true,
+    },
   ];
 
   if (loading) {
@@ -256,6 +301,11 @@ export default function ProjectPipelinePage() {
     if (completed) return 'completed';
     if (stageId === 1) return 'completed';
     if (generatingStage === stageId) return 'generating';
+
+    // S6 requires S3 to be completed (not S5)
+    if (stageId === 6) {
+      return project.s3_completed ? 'ready' : 'locked';
+    }
 
     const prevCompleted = stageId === 1 || (project as any)[`s${stageId - 1}_completed`];
     return prevCompleted ? 'ready' : 'locked';
@@ -293,12 +343,13 @@ export default function ProjectPipelinePage() {
                 project.s3_completed,
                 project.s4_completed,
                 project.s5_completed,
+                project.s6_completed,
               ].filter(Boolean).length}
-              /5 Stages
+              /6 Stages
             </span>
           </div>
           <div className="flex gap-2">
-            {[1, 2, 3, 4, 5].map((stage) => {
+            {[1, 2, 3, 4, 5, 6].map((stage) => {
               const completed = (project as any)[`s${stage}_completed`];
               return (
                 <div
@@ -393,7 +444,7 @@ export default function ProjectPipelinePage() {
         })}
       </div>
 
-      {project.s5_completed && (
+      {project.s6_completed && (
         <Alert className="mt-6 bg-green-50 border-green-200">
           <CheckCircle2 className="h-4 w-4 text-green-600" />
           <AlertDescription className="text-green-800">
