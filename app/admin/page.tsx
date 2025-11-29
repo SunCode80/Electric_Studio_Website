@@ -104,24 +104,29 @@ export default function AdminDashboard() {
     if (!projectToDelete) return;
 
     setIsDeleting(true);
+    console.log('Deleting project:', projectToDelete.id);
+
     try {
       const response = await fetch(`/api/projects/${projectToDelete.id}`, {
         method: 'DELETE',
       });
 
+      const data = await response.json();
+      console.log('Delete response:', data);
+
       if (!response.ok) {
-        throw new Error('Failed to delete project');
+        throw new Error(data.error || 'Failed to delete project');
       }
 
       toast.success('Project deleted successfully');
-      loadProjects();
-    } catch (error: any) {
-      console.error('Delete error:', error);
-      toast.error('Failed to delete project');
-    } finally {
-      setIsDeleting(false);
       setDeleteModalOpen(false);
       setProjectToDelete(null);
+      await loadProjects();
+    } catch (error: any) {
+      console.error('Delete error:', error);
+      toast.error(error.message || 'Failed to delete project');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
