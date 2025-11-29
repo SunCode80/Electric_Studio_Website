@@ -803,24 +803,100 @@ export default function PipelinePage() {
                   </div>
                 )}
               </CardHeader>
-              {(stageInfo.data || stageInfo.error) && (
+
+              {stage !== 'S1' && (
                 <CardContent>
                   {stageInfo.error && (
                     <div className="text-red-600 text-sm mb-4">
                       Error: {stageInfo.error}
                     </div>
                   )}
+
                   {stageInfo.data && (
-                    stage === 'S5' ? renderS5Output(stageInfo.data) : (
-                      <div className="bg-gray-50 rounded-md p-4 max-h-96 overflow-auto">
-                        <pre className="text-xs text-gray-700 whitespace-pre-wrap">
-                          {typeof stageInfo.data === 'string'
-                            ? stageInfo.data
-                            : JSON.stringify(stageInfo.data, null, 2)}
-                        </pre>
-                      </div>
-                    )
+                    <div className="mb-4">
+                      {stage === 'S5' ? renderS5Output(stageInfo.data) : (
+                        <div className="bg-gray-50 rounded-md p-4 max-h-96 overflow-auto">
+                          <pre className="text-xs text-gray-700 whitespace-pre-wrap">
+                            {typeof stageInfo.data === 'string'
+                              ? stageInfo.data
+                              : JSON.stringify(stageInfo.data, null, 2)}
+                          </pre>
+                        </div>
+                      )}
+                    </div>
                   )}
+
+                  <div className="flex items-center gap-3 pt-4 border-t border-gray-200">
+                    {stageInfo.status === 'completed' && stageInfo.data && (
+                      <>
+                        <Button
+                          onClick={() => {
+                            const blob = new Blob([typeof stageInfo.data === 'string' ? stageInfo.data : JSON.stringify(stageInfo.data, null, 2)], { type: 'text/plain' });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `${stage.toLowerCase()}_output.${['s2', 's3', 's5'].includes(stage.toLowerCase()) ? 'json' : 'txt'}`;
+                            a.click();
+                            URL.revokeObjectURL(url);
+                          }}
+                          variant="default"
+                          size="sm"
+                        >
+                          <Download className="w-4 h-4 mr-2" />
+                          Download
+                        </Button>
+
+                        <Button
+                          onClick={() => handleClearStageClick(stage.toLowerCase())}
+                          variant="outline"
+                          size="sm"
+                          className="text-orange-600 hover:text-orange-700 border-orange-300"
+                        >
+                          <RotateCcw className="w-4 h-4 mr-2" />
+                          Clear Stage
+                        </Button>
+                      </>
+                    )}
+
+                    <div className="flex-1" />
+
+                    <label className="cursor-pointer">
+                      <input
+                        type="file"
+                        accept=".txt,.json"
+                        onChange={(e) => handleCustomUpload(e, stage.toLowerCase())}
+                        className="hidden"
+                      />
+                      <Button
+                        asChild
+                        variant="outline"
+                        size="sm"
+                      >
+                        <span>
+                          <Upload className="w-4 h-4 mr-2" />
+                          Upload Custom
+                        </span>
+                      </Button>
+                    </label>
+
+                    {!stageInfo.data && stageInfo.status !== 'completed' && (
+                      <span className="text-sm text-gray-500">
+                        Generate or upload custom file to continue
+                      </span>
+                    )}
+                  </div>
+                </CardContent>
+              )}
+
+              {stage === 'S1' && stageInfo.data && (
+                <CardContent>
+                  <div className="bg-gray-50 rounded-md p-4 max-h-96 overflow-auto">
+                    <pre className="text-xs text-gray-700 whitespace-pre-wrap">
+                      {typeof stageInfo.data === 'string'
+                        ? stageInfo.data
+                        : JSON.stringify(stageInfo.data, null, 2)}
+                    </pre>
+                  </div>
                 </CardContent>
               )}
             </Card>
