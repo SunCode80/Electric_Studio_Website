@@ -8,7 +8,7 @@ export async function DELETE(
   try {
     console.log('DELETE request received for project:', params.id);
 
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
       console.error('Missing Supabase environment variables');
       return NextResponse.json(
         { error: 'Server configuration error' },
@@ -18,7 +18,7 @@ export async function DELETE(
 
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
       {
         auth: {
           autoRefreshToken: false,
