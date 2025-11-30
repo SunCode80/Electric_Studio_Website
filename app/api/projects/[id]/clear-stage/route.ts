@@ -1,5 +1,10 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase/client';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -23,11 +28,11 @@ export async function POST(
     }
 
     const stagesToClear: Record<string, string[]> = {
-      's2': ['s2_presentation_data', 's3_video_production_data', 's4_assembly_data', 's5_output', 's6_pdf_path'],
-      's3': ['s3_video_production_data', 's4_assembly_data', 's5_output', 's6_pdf_path'],
-      's4': ['s4_assembly_data', 's5_output', 's6_pdf_path'],
-      's5': ['s5_output', 's6_pdf_path'],
-      's6': ['s6_pdf_path'],
+      's2': ['s2_completed', 's2_file_path', 's2_generated_at', 's3_completed', 's3_file_path', 's3_generated_at', 's4_completed', 's4_file_path', 's4_generated_at', 's5_completed', 's5_file_path', 's5_generated_at', 's6_completed', 's6_file_path', 's6_generated_at'],
+      's3': ['s3_completed', 's3_file_path', 's3_generated_at', 's4_completed', 's4_file_path', 's4_generated_at', 's5_completed', 's5_file_path', 's5_generated_at', 's6_completed', 's6_file_path', 's6_generated_at'],
+      's4': ['s4_completed', 's4_file_path', 's4_generated_at', 's5_completed', 's5_file_path', 's5_generated_at', 's6_completed', 's6_file_path', 's6_generated_at'],
+      's5': ['s5_completed', 's5_file_path', 's5_generated_at', 's6_completed', 's6_file_path', 's6_generated_at'],
+      's6': ['s6_completed', 's6_file_path', 's6_generated_at'],
     };
 
     const columnsToNull = stagesToClear[stage];
@@ -35,13 +40,17 @@ export async function POST(
       return NextResponse.json({ error: 'Invalid stage' }, { status: 400 });
     }
 
-    const updateData: Record<string, null> = {};
+    const updateData: Record<string, null | boolean> = {};
     columnsToNull.forEach(col => {
-      updateData[col] = null;
+      if (col.endsWith('_completed')) {
+        updateData[col] = false;
+      } else {
+        updateData[col] = null;
+      }
     });
 
     const { error } = await supabase
-      .from('content_strategy_submissions')
+      .from('projects')
       .update(updateData)
       .eq('id', id);
 
