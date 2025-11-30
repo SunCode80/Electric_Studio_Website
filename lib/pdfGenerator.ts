@@ -402,7 +402,20 @@ export function downloadPDFBlob(blob: Blob, filename: string): void {
 /**
  * Extract business name from S3 content
  */
-export function extractBusinessName(s3Content: string): string {
+export function extractBusinessName(s3Content: string | any): string {
+  let content = s3Content;
+
+  if (typeof s3Content === 'object' && s3Content !== null) {
+    if (s3Content.projectName) return String(s3Content.projectName).slice(0, 50);
+    if (s3Content.clientName) return String(s3Content.clientName).slice(0, 50);
+    if (s3Content.businessName) return String(s3Content.businessName).slice(0, 50);
+    content = JSON.stringify(s3Content);
+  }
+
+  if (typeof content !== 'string') {
+    return 'Client';
+  }
+
   const patterns = [
     /(?:Business|Company|Client|Project):\s*(.+?)(?:\n|$)/i,
     /(?:for|For)\s+(.+?)(?:\n|$)/,
@@ -411,7 +424,7 @@ export function extractBusinessName(s3Content: string): string {
   ];
 
   for (const pattern of patterns) {
-    const match = s3Content.match(pattern);
+    const match = content.match(pattern);
     if (match && match[1]) {
       return match[1].trim().slice(0, 50);
     }
@@ -441,13 +454,21 @@ export async function generateS6ComprehensivePDF(
   opts.title = 'Complete Production Bible';
 
   let parsedS3 = s3Content;
-  if (typeof s3Content === 'string') {
+  if (typeof s3Content === 'object' && s3Content !== null) {
+    parsedS3 = JSON.stringify(s3Content, null, 2);
+  } else if (typeof s3Content === 'string') {
     parsedS3 = cleanMarkdownCodeFences(s3Content);
+  } else {
+    throw new Error('S3 content must be a string or object');
   }
 
   let parsedS4 = s4Content;
-  if (typeof s4Content === 'string') {
+  if (typeof s4Content === 'object' && s4Content !== null) {
+    parsedS4 = JSON.stringify(s4Content, null, 2);
+  } else if (typeof s4Content === 'string') {
     parsedS4 = cleanMarkdownCodeFences(s4Content);
+  } else {
+    throw new Error('S4 content must be a string or object');
   }
 
   let parsedS5 = s5Data;
@@ -460,6 +481,15 @@ export async function generateS6ComprehensivePDF(
       console.error('S5 data preview:', s5Data.substring(0, 200));
       throw new Error('S5 data is not valid JSON');
     }
+  }
+
+  if (!parsedS5 || typeof parsedS5 !== 'object') {
+    throw new Error('S5 data must be a valid object');
+  }
+
+  if (!parsedS5.assets || !Array.isArray(parsedS5.assets)) {
+    console.warn('S5 data missing assets array. S5 structure:', Object.keys(parsedS5));
+    parsedS5 = { assets: [] };
   }
 
   if (onProgress) onProgress(5);
