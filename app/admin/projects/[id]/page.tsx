@@ -36,6 +36,24 @@ export default function ProjectPipelinePage() {
     setLoading(false);
   }
 
+  function cleanMarkdownCodeFences(text: string): string {
+    if (!text || typeof text !== 'string') return text;
+
+    let cleaned = text.trim();
+
+    if (cleaned.startsWith('```json')) {
+      cleaned = cleaned.slice(7);
+    } else if (cleaned.startsWith('```')) {
+      cleaned = cleaned.slice(3);
+    }
+
+    if (cleaned.endsWith('```')) {
+      cleaned = cleaned.slice(0, -3);
+    }
+
+    return cleaned.trim();
+  }
+
   async function handleGenerate(stage: number) {
     if (!project) return;
 
@@ -134,6 +152,10 @@ export default function ProjectPipelinePage() {
         }
 
         output = accumulatedText;
+      }
+
+      if ([2, 5].includes(stage)) {
+        output = cleanMarkdownCodeFences(output);
       }
 
       const filePath = await uploadStageFile(projectId, stage, output, 'txt');

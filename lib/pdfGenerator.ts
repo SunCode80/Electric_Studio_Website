@@ -1,13 +1,31 @@
 /**
  * Client-Side PDF Generator for Electric Studio Admin Portal
- * 
+ *
  * Generates the S5 Master PDF by combining S3 and S4 content.
  * Uses jsPDF for browser-based PDF generation with ZERO content modification.
- * 
+ *
  * This approach ensures 100% content fidelity - we act as a typesetter, not a writer.
  */
 
 import jsPDF from 'jspdf';
+
+const cleanMarkdownCodeFences = (text: string): string => {
+  if (!text || typeof text !== 'string') return text;
+
+  let cleaned = text.trim();
+
+  if (cleaned.startsWith('```json')) {
+    cleaned = cleaned.slice(7);
+  } else if (cleaned.startsWith('```')) {
+    cleaned = cleaned.slice(3);
+  }
+
+  if (cleaned.endsWith('```')) {
+    cleaned = cleaned.slice(0, -3);
+  }
+
+  return cleaned.trim();
+};
 
 export interface PDFOptions {
   title?: string;
@@ -422,6 +440,28 @@ export async function generateS6ComprehensivePDF(
   const opts = { ...DEFAULT_OPTIONS, ...options };
   opts.title = 'Complete Production Bible';
 
+  let parsedS3 = s3Content;
+  if (typeof s3Content === 'string') {
+    parsedS3 = cleanMarkdownCodeFences(s3Content);
+  }
+
+  let parsedS4 = s4Content;
+  if (typeof s4Content === 'string') {
+    parsedS4 = cleanMarkdownCodeFences(s4Content);
+  }
+
+  let parsedS5 = s5Data;
+  if (typeof s5Data === 'string') {
+    try {
+      const cleaned = cleanMarkdownCodeFences(s5Data);
+      parsedS5 = JSON.parse(cleaned);
+    } catch (e) {
+      console.error('Failed to parse S5 data:', e);
+      console.error('S5 data preview:', s5Data.substring(0, 200));
+      throw new Error('S5 data is not valid JSON');
+    }
+  }
+
   if (onProgress) onProgress(5);
 
   const doc = new jsPDF({
@@ -531,8 +571,8 @@ export async function generateS6ComprehensivePDF(
 
   currentY = 100;
 
-  const s3Lines = s3Content.split('\n');
-  const totalLines = s3Lines.length + s4Content.split('\n').length;
+  const s3Lines = parsedS3.split('\n');
+  const totalLines = s3Lines.length + parsedS4.split('\n').length;
   let processedLines = 0;
 
   for (const line of s3Lines) {
@@ -596,7 +636,7 @@ export async function generateS6ComprehensivePDF(
 
   currentY = 100;
 
-  const s4Lines = s4Content.split('\n');
+  const s4Lines = parsedS4.split('\n');
 
   for (const line of s4Lines) {
     processedLines++;
@@ -659,8 +699,8 @@ export async function generateS6ComprehensivePDF(
 
   currentY = 100;
 
-  if (s5Data && s5Data.assets) {
-    for (const asset of s5Data.assets) {
+  if (parsedS5 && parsedS5.assets) {
+    for (const asset of parsedS5.assets) {
       if (currentY + 200 > pageHeight - 60) {
         addNewPage();
       }
