@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Download, Loader2, Lock, CheckCircle2, Play } from 'lucide-react';
+import { ArrowLeft, Download, Loader2, Lock, CheckCircle2, Play, Upload, RotateCcw } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { getProject, downloadStageFile, updateProjectStage, uploadStageFile } from '@/lib/api/projects';
 import { Project } from '@/lib/types/project';
 import { toast } from 'sonner';
@@ -21,6 +22,9 @@ export default function ProjectPipelinePage() {
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [generatingStage, setGeneratingStage] = useState<number | null>(null);
+  const [clearModalOpen, setClearModalOpen] = useState(false);
+  const [stageToClear, setStageToClear] = useState<number | null>(null);
+  const [isClearing, setIsClearing] = useState(false);
 
   useEffect(() => {
     loadProject();
@@ -266,6 +270,103 @@ export default function ProjectPipelinePage() {
     }
   }
 
+  function handleClearStageClick(stageId: number) {
+    setStageToClear(stageId);
+    setClearModalOpen(true);
+  }
+
+  async function handleClearConfirm() {
+    if (!stageToClear) return;
+
+    setIsClearing(true);
+    try {
+      const response = await fetch(`/api/projects/${projectId}/clear-stage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stage: `s${stageToClear}` }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to clear stage');
+      }
+
+      toast.success(`Stage ${stageToClear} cleared successfully`);
+      await loadProject();
+      setClearModalOpen(false);
+      setStageToClear(null);
+    } catch (error: any) {
+      console.error('Error clearing stage:', error);
+      toast.error(error.message || 'Failed to clear stage');
+    } finally {
+      setIsClearing(false);
+    }
+  }
+
+  async function handleCustomUpload(e: React.ChangeEvent<HTMLInputElement>, stageId: number) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      let cleaned = text.trim();
+
+      if (cleaned.startsWith('```json')) cleaned = cleaned.slice(7);
+      else if (cleaned.startsWith('```')) cleaned = cleaned.slice(3);
+      if (cleaned.endsWith('```')) cleaned = cleaned.slice(0, -3);
+      cleaned = cleaned.trim();
+
+      if ([2, 3, 5].includes(stageId)) {
+        try {
+          JSON.parse(cleaned);
+        } catch {
+          toast.error('Invalid JSON format. Please check your file.');
+          return;
+        }
+      }
+
+      const response = await fetch(`/api/projects/${projectId}/upload-stage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stage: `s${stageId}`, content: cleaned }),
+      });
+
+      if (!response.ok) throw new Error('Upload failed');
+
+      toast.success(`Stage ${stageId} updated successfully`);
+      await loadProject();
+    } catch (error: any) {
+      console.error('Error uploading file:', error);
+      toast.error(error.message || 'Failed to upload file');
+    }
+
+    e.target.value = '';
+  }
+
+  function getDownstreamStages(stageId: number): { id: number; name: string }[] {
+    const stageMap: Record<number, { id: number; name: string }[]> = {
+      2: [
+        { id: 3, name: 'Video Production Package' },
+        { id: 4, name: 'Assembly Instructions' },
+        { id: 5, name: 'Stock Library Assets' },
+        { id: 6, name: 'Complete Production Bible' },
+      ],
+      3: [
+        { id: 4, name: 'Assembly Instructions' },
+        { id: 5, name: 'Stock Library Assets' },
+        { id: 6, name: 'Complete Production Bible' },
+      ],
+      4: [
+        { id: 5, name: 'Stock Library Assets' },
+        { id: 6, name: 'Complete Production Bible' },
+      ],
+      5: [
+        { id: 6, name: 'Complete Production Bible' },
+      ],
+      6: [],
+    };
+    return stageMap[stageId] || [];
+  }
+
   const stages = [
     {
       id: 1,
@@ -433,16 +534,29 @@ export default function ProjectPipelinePage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   {status === 'completed' && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDownload(stage.id)}
-                    >
-                      <Download className="w-4 h-4 mr-2" />
-                      Download
-                    </Button>
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDownload(stage.id)}
+                      >
+                        <Download className="w-4 h-4 mr-2" />
+                        Download
+                      </Button>
+                      {stage.id !== 1 && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleClearStageClick(stage.id)}
+                          className="text-orange-600 hover:text-orange-700 border-orange-300 hover:border-orange-400"
+                        >
+                          <RotateCcw className="w-4 h-4 mr-2" />
+                          Clear Stage
+                        </Button>
+                      )}
+                    </>
                   )}
                   {stage.canGenerate && status === 'ready' && (
                     <Button
@@ -466,6 +580,26 @@ export default function ProjectPipelinePage() {
                       Complete previous stage first
                     </Button>
                   )}
+                  {stage.id !== 1 && (status === 'ready' || status === 'completed') && (
+                    <label className="cursor-pointer">
+                      <input
+                        type="file"
+                        accept=".txt,.json"
+                        onChange={(e) => handleCustomUpload(e, stage.id)}
+                        className="hidden"
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        asChild
+                      >
+                        <span>
+                          <Upload className="w-4 h-4 mr-2" />
+                          Upload Custom
+                        </span>
+                      </Button>
+                    </label>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -481,6 +615,58 @@ export default function ProjectPipelinePage() {
           </AlertDescription>
         </Alert>
       )}
+
+      <AlertDialog open={clearModalOpen} onOpenChange={setClearModalOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <RotateCcw className="w-5 h-5 text-orange-500" />
+              Clear Stage {stageToClear} Data?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              <div className="space-y-3">
+                <p>
+                  This will clear the data for Stage {stageToClear} and all downstream stages.
+                </p>
+                {stageToClear && getDownstreamStages(stageToClear).length > 0 && (
+                  <div>
+                    <p className="font-medium text-gray-900 mb-2">
+                      The following stages will also be cleared:
+                    </p>
+                    <ul className="list-disc list-inside space-y-1 text-sm">
+                      {getDownstreamStages(stageToClear).map(stage => (
+                        <li key={stage.id}>
+                          S{stage.id}: {stage.name}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                <p className="text-sm text-gray-600">
+                  You can regenerate or upload a custom file after clearing.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isClearing}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleClearConfirm}
+              disabled={isClearing}
+              className="bg-orange-600 hover:bg-orange-700"
+            >
+              {isClearing ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Clearing...
+                </>
+              ) : (
+                'Clear Stage'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
