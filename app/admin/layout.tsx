@@ -3,7 +3,7 @@
 import { ReactNode, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { Home, LogOut } from 'lucide-react';
+import { Home, LogOut, FileText, ClipboardList } from 'lucide-react';
 import { isAdminAuthenticated, logoutAdmin } from '@/lib/admin/auth';
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
@@ -47,6 +47,20 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                 >
                   <Home className="w-4 h-4 mr-2" />
                   Projects
+                </Link>
+                <Link
+                  href="/admin/submissions"
+                  className="border-transparent text-gray-400 hover:border-electric-blue hover:text-electric-blue inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors"
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  Submissions
+                </Link>
+                <Link
+                  href="/admin/discovery"
+                  className="border-transparent text-gray-400 hover:border-electric-blue hover:text-electric-blue inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors"
+                >
+                  <ClipboardList className="w-4 h-4 mr-2" />
+                  Discovery Surveys
                 </Link>
               </div>
             </div>
