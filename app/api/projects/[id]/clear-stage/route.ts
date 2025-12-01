@@ -28,29 +28,29 @@ export async function POST(
     }
 
     const stagesToClear: Record<string, string[]> = {
-      's2': ['s2_completed', 's2_file_path', 's2_generated_at', 's3_completed', 's3_file_path', 's3_generated_at', 's4_completed', 's4_file_path', 's4_generated_at', 's5_completed', 's5_file_path', 's5_generated_at', 's6_completed', 's6_file_path', 's6_generated_at'],
-      's3': ['s3_completed', 's3_file_path', 's3_generated_at', 's4_completed', 's4_file_path', 's4_generated_at', 's5_completed', 's5_file_path', 's5_generated_at', 's6_completed', 's6_file_path', 's6_generated_at'],
-      's4': ['s4_completed', 's4_file_path', 's4_generated_at', 's5_completed', 's5_file_path', 's5_generated_at', 's6_completed', 's6_file_path', 's6_generated_at'],
-      's5': ['s5_completed', 's5_file_path', 's5_generated_at', 's6_completed', 's6_file_path', 's6_generated_at'],
-      's6': ['s6_completed', 's6_file_path', 's6_generated_at'],
+      's2': ['s2_presentation_data', 's3_video_production_data', 's4_assembly_data', 's5_output'],
+      's3': ['s3_video_production_data', 's4_assembly_data', 's5_output'],
+      's4': ['s4_assembly_data', 's5_output'],
+      's5': ['s5_output'],
+      's6': [],
     };
 
     const columnsToNull = stagesToClear[stage];
-    if (!columnsToNull) {
+    if (columnsToNull === undefined) {
       return NextResponse.json({ error: 'Invalid stage' }, { status: 400 });
     }
 
-    const updateData: Record<string, null | boolean> = {};
+    if (columnsToNull.length === 0) {
+      return NextResponse.json({ success: true, cleared: [] });
+    }
+
+    const updateData: Record<string, null> = {};
     columnsToNull.forEach(col => {
-      if (col.endsWith('_completed')) {
-        updateData[col] = false;
-      } else {
-        updateData[col] = null;
-      }
+      updateData[col] = null;
     });
 
     const { error } = await supabase
-      .from('projects')
+      .from('content_strategy_submissions')
       .update(updateData)
       .eq('id', id);
 
