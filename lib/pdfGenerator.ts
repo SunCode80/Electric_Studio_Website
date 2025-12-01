@@ -738,7 +738,7 @@ export async function generateS6ComprehensivePDF(
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(opts.fontSize! + 3);
       doc.setTextColor(124, 58, 237);
-      doc.text(asset.assetName || 'Asset', margin, currentY);
+      doc.text(asset.assetId || asset.assetName || 'Asset', margin, currentY);
       currentY += lineHeight * 1.5;
 
       doc.setFont('helvetica', 'normal');
